@@ -1,0 +1,16 @@
+query DeliveryInput {
+  shop {
+    goals: metafield(namespace: "zuper_threshold", key: "goals") {
+      value
+      type
+    }
+  }
+  cart {
+    deliveryGroups {
+      id
+    }
+  }
+  discount {
+    discountClasses
+  }
+}

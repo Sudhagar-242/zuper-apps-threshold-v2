@@ -1,0 +1,14 @@
+name: New MCP server
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: shopify-dev-mcp
+    command: npx
+    args:
+      - "@shopify/dev-mcp@latest"
+    env: {
+      OPT_OUT_INSTRUMENTATION": "true",
+      POLARIS_UNIFIED: "true",
+      LIQUID: "true",
+      LIQUID_VALIDATION_MODE: "partial"
+    }
