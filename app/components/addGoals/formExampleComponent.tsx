@@ -9,7 +9,6 @@ interface Props {
 
 function FormExampleComponent({ name, email, index, choice }: Props) {
   const [selected, setselected] = useState(choice);
-  console.log(selected);
   return (
     <>
       <s-choice-list

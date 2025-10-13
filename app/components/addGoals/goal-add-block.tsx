@@ -43,17 +43,16 @@ const AddGoalBlock = ({
   const [isExpanded, setIsExpanded] = useState(true);
   const [goalName, setGoalName] = useState<string>(goal.goalName ?? "");
 
-  const selectedProducts =
+  const [selectedProducts, setSelectedProducts] = useState(
     (typeof goal.Products === "string"
       ? JSON.parse(goal.Products)
-      : goal.Products) ?? null;
+      : goal.Products) ?? null,
+  );
 
   const selectedGifts =
     (typeof goal.freeGifts === "string"
       ? JSON.parse(goal.freeGifts)
       : goal.freeGifts) ?? null;
-
-  console.log(selectedGifts, selectedProducts);
 
   return (
     <>
@@ -70,13 +69,11 @@ const AddGoalBlock = ({
                 hidden
                 name={`goals[${idx}][isActive]`}
                 value={isActive ? "true" : "false"}
-                onChange={() => console.log("Hello There...")}
               />
               <s-switch
                 checked={isActive}
                 onChange={(e) => {
                   setIsActive(e.currentTarget.checked);
-                  console.log("switch", e.currentTarget.checked);
                 }}
                 accessibilityLabel="isActive"
                 defaultChecked={isActive}
@@ -88,7 +85,7 @@ const AddGoalBlock = ({
                   name={`goals[${idx}][title]`}
                   value={`Goal ${idx + 1}`}
                   placeholder="Enter goal title"
-                  onChange={(e) => console.log(e.currentTarget.value)}
+                  onChange={() => {}}
                 />
                 <s-heading>Goal {idx + 1}</s-heading>
                 <InlineEditableText
@@ -104,7 +101,6 @@ const AddGoalBlock = ({
               accessibilityLabel="Expands"
               onClick={() => {
                 setIsExpanded((prev) => !prev);
-                console.log("Expands", isExpanded);
               }}
             />
           </s-stack>
@@ -118,6 +114,7 @@ const AddGoalBlock = ({
                 <ConditionBlock
                   isActive={isActive}
                   selectedProducts={selectedProducts}
+                  setSelectedProducts={setSelectedProducts}
                   idx={idx}
                   selectedChoice={goal.condition as AddConditionBlockChoices}
                   selectedProductCondition={goal.productsCondition ?? "any"}
@@ -175,7 +172,8 @@ const AddGoalBlock = ({
                         tone="critical"
                         onClick={() => {
                           onChange();
-                          onRemove(id)}}
+                          onRemove(id);
+                        }}
                       >
                         Remove
                       </s-link>

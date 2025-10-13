@@ -44,6 +44,7 @@ interface loaderResponse {
 
 const createEmptyGoal: GoalType = {
   title: "",
+  goalName: "Discount",
   isActive: "true",
   condition: "cart_value",
   price: "100",
@@ -70,7 +71,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
     return id;
   })();
-  console.log(functionId);
   await ensureDiscountExists(
     admin,
     data.shop.discountId,
@@ -92,8 +92,6 @@ export async function action({ request }: ActionFunctionArgs) {
       value: formData.get("goals"),
     },
   });
-  console.log(response);
-  // console.log(response.json());
 
   return null;
 }
@@ -118,10 +116,6 @@ const parseGoalsFromForm = (formData: FormData) => {
 export default function GoalTab() {
   const { id: shopId, goals: goalsMetafield } = useLoaderData<typeof loader>();
   const submit = useSubmit();
-
-  console.log("goals", goalsMetafield);
-  console.log("id", shopId);
-
   // Last saved state of goals
   const [savedGoals, setSavedGoals] = useState(
     JSON.parse(goalsMetafield?.value as string),
@@ -130,7 +124,7 @@ export default function GoalTab() {
   const [goals, setGoals] = useState<GoalType[]>(savedGoals);
   const [UnSavedChanges, setUnSavedChanges] = useState(false);
 
-  const [savedOrNot, setSavedOrNot] = useState(false);
+  const [savedOrNot, setSavedOrNot] = useState(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -141,25 +135,20 @@ export default function GoalTab() {
   }, [goals, UnSavedChanges]);
 
   const triggerChange = () => {
-    console.log("Ref before dispatch:", inputRef.current);
     if (inputRef.current) {
       inputRef.current.value = JSON.stringify(Math.random());
       inputRef.current.dispatchEvent(new Event("input", { bubbles: true }));
-    } else {
-      console.log("Ref is null or detached.");
     }
   };
 
   // Add new empty input group
   const handleAdd = () => {
     setGoals((prev) => [...prev, createEmptyGoal]);
-    console.log(inputRef.current);
     setUnSavedChanges(true);
   };
 
   // Remove input group by index
   const handleRemove = (index: number) => {
-    console.log("Removing index:", index);
     setGoals((prev) => prev.filter((_, i) => i !== index));
     setUnSavedChanges(true);
   };
@@ -169,7 +158,6 @@ export default function GoalTab() {
     event.preventDefault();
     const formData = new FormData(event.target);
     const parsedData = parseGoalsFromForm(formData) as GoalType[];
-    console.log(parsedData);
     submit({ goals: JSON.stringify(parsedData), shopId }, { method: "POST" });
     setSavedGoals(parsedData);
     setGoals(parsedData);

@@ -1,5 +1,5 @@
 import { AddRewardBlockChoices } from "app/enums/addBlock";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowPlacer } from "../goal-add-block";
 import { Product } from "@shopify/app-bridge-react";
 
@@ -30,6 +30,34 @@ const RewardBlocK = ({
     onModalSelectedGifts?.length > 0
       ? onModalSelectedGifts.map((gift) => ({ id: gift?.id ?? "" }))
       : [];
+
+  const [errors, setErrors] = useState<{ offers: string; gifts: string }>({
+    offers: "",
+    gifts: "",
+  });
+
+  useEffect(() => {
+    const newError = { offers: "", gifts: "" };
+
+    if (
+      (selected === AddRewardBlockChoices.ORDER_DISCOUNT &&
+        (Number(offerPercentage) < 1 || Number(offerPercentage) > 100)) ||
+      offerPercentage.length <= 0
+    ) {
+      newError.offers = "Must be between 1 and 100";
+    }
+
+    if (
+      (selected === AddRewardBlockChoices.FREE_GIFT &&
+        onModalSelectedGifts?.length === 0) ||
+      selectedGiftsIds.length === 0
+    ) {
+      newError.gifts = "Select at least one product.";
+    }
+
+    setErrors(newError);
+  }, [offerPercentage, selected, selectedGiftsIds.length]);
+
   return (
     <>
       <s-section padding="base">
@@ -55,6 +83,11 @@ const RewardBlocK = ({
                     setSelected(e.currentTarget.value as AddRewardBlockChoices)
                   }
                   required
+                  error={
+                    selected === AddRewardBlockChoices.FREE_GIFT
+                      ? errors.gifts
+                      : undefined
+                  }
                 >
                   <s-option
                     value={AddRewardBlockChoices.FREE_SHIPPING}
@@ -118,7 +151,6 @@ const RewardBlocK = ({
                         if (selected) {
                           setOnModalSelectedGifts(selected as Product[]);
                         }
-                        console.log(selected);
                       }}
                       disabled={!isActive}
                     >
@@ -128,8 +160,11 @@ const RewardBlocK = ({
                       hidden
                       name={`goals[${idx}][freeGifts]`}
                       value={JSON.stringify(onModalSelectedGifts)}
-                      onChange={() => console.log("Hello There...")}
+                      onChange={() => {}}
                     />
+                    {errors.gifts.length > 0 && (
+                      <input hidden name="prevent_save" required />
+                    )}
                   </s-stack>
                 </>
               ) : (
@@ -147,12 +182,16 @@ const RewardBlocK = ({
                         defaultValue="2"
                         suffix="%"
                         value={offerPercentage}
+                        error={errors.offers}
                         onChange={(e) =>
                           setOfferPercentage(e.currentTarget.value)
                         }
                         readOnly={!isActive}
                         required
                       ></s-number-field>
+                      {errors.offers.length > 0 && (
+                        <input hidden name="prevent_save" required />
+                      )}
                     </s-box>
                   </s-stack>
                 </>

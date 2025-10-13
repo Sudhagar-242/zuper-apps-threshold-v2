@@ -109,6 +109,7 @@ const GoalTextBlock = ({
                   onChange={(e) => setHeadline(e.currentTarget.value)}
                   readOnly={!isActive}
                   required
+                  error={errors.headline ? commonErrorMessage : undefined}
                   error-message={
                     errors.headline ? commonErrorMessage : undefined
                   }
@@ -124,6 +125,9 @@ const GoalTextBlock = ({
                   }
                   readOnly={!isActive}
                   required
+                  error={
+                    errors.topBarHeadlineIcons ? commonErrorMessage : undefined
+                  }
                   error-message={
                     errors.topBarHeadlineIcons ? commonErrorMessage : undefined
                   }
@@ -139,6 +143,9 @@ const GoalTextBlock = ({
                   }
                   readOnly={!isActive}
                   required
+                  error={
+                    errors.topBarHeadlineSimple ? commonErrorMessage : undefined
+                  }
                   error-message={
                     errors.topBarHeadlineSimple ? commonErrorMessage : undefined
                   }
@@ -154,6 +161,9 @@ const GoalTextBlock = ({
                   }
                   readOnly={!isActive}
                   required
+                  error={
+                    errors.confirmationMessage ? commonErrorMessage : undefined
+                  }
                   error-message={
                     errors.confirmationMessage ? commonErrorMessage : undefined
                   }
@@ -169,6 +179,11 @@ const GoalTextBlock = ({
                   }
                   readOnly={!isActive}
                   required
+                  error={
+                    errors.remainingTargetMessage
+                      ? commonErrorMessage
+                      : undefined
+                  }
                   error-message={
                     errors.remainingTargetMessage
                       ? commonErrorMessage
@@ -186,12 +201,20 @@ const GoalTextBlock = ({
                   }
                   readOnly={!isActive}
                   required
+                  error={
+                    errors.discountAppliedMessage
+                      ? commonErrorMessage
+                      : undefined
+                  }
                   error-message={
                     errors.discountAppliedMessage
                       ? commonErrorMessage
                       : undefined
                   }
                 />
+                {Object.values(errors).some(Boolean) && (
+                  <input hidden name="prevent_save_bar" required />
+                )}
               </s-stack>
             </s-box>
           </s-stack>

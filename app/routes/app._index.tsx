@@ -130,14 +130,27 @@ export default function Index() {
       >
         Create Goal
       </s-button>
+      <s-banner tone="warning" heading="App widget status">
+        <s-paragraph>
+          Enable the app embed by clicking the <b>Activate widget</b> button
+          below.
+        </s-paragraph>
+        <s-button
+          slot="primary"
+          aria-label="Activate widget"
+          href={`https://${shop}/admin/themes/current/editor?context=apps&template=${"main"}&activateAppId=${api_key}/${"app-embed-block"}`}
+        >
+          Activate widget
+        </s-button>
+      </s-banner>
 
       <s-box accessibilityLabel="Empty state section">
         <s-grid gap="base" justifyItems="center" paddingBlock="large-400">
           <s-box maxInlineSize="200px" maxBlockSize="200px">
             <s-image
-              aspectRatio="1/0.5"
-              src="https://cdn.shopify.com/static/images/polaris/patterns/callout.png"
-              alt="A stylized graphic of four characters, each holding a puzzle piece"
+              // aspectRatio="1/0.5"
+              src="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+              alt="EmptyState"
             />
           </s-box>
           <s-grid justifyItems="center" maxInlineSize="450px" gap="base">
@@ -148,10 +161,6 @@ export default function Index() {
               </s-paragraph>
             </s-stack>
             <s-button-group>
-               <s-button slot="secondary-actions" aria-label="Learn more about creating puzzles"
-               href={`https://${shop}/admin/themes/current/editor?context=apps&template=${'main'}&activateAppId=${api_key}/${'app-embed-block'}`}
-              > Goto Inside </s-button>
-      
               <s-button
                 slot="primary-action"
                 aria-label="Add a new Goal"
