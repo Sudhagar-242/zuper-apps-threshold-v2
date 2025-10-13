@@ -10,7 +10,7 @@ interface OtherOptionsBlockType {
 const OtherOptionsBlock = ({
   isActive,
   idx,
-  isCombined = true,
+  isCombined,
 }: OtherOptionsBlockType) => {
   const [selected, setSelected] = useState(isCombined);
   return (
@@ -46,7 +46,7 @@ const OtherOptionsBlock = ({
                 checked={selected}
                 onChange={(e) => setSelected(e.currentTarget.checked)}
                 disabled={!isActive}
-                defaultChecked={selected}
+                defaultChecked={isCombined}
               ></s-checkbox>
             </s-stack>
           </s-box>

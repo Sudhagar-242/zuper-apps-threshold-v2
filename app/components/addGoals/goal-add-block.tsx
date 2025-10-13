@@ -1,4 +1,4 @@
-import { SetStateAction, useState } from "react";
+import { SetStateAction, useEffect, useRef, useState } from "react";
 import {
   AddConditionBlockChoices,
   AddRewardBlockChoices,
@@ -26,31 +26,32 @@ type AddGoalBlockProps = {
   onRemove: (id: string) => void;
   goal: GoalType;
   isActiveGoal: boolean;
-  onChange: (id: string, updatedGoal: GoalType) => void;
+  onChange?: () => void;
 };
 
 const AddGoalBlock = ({
   idx,
   id,
   onRemove,
-  onChange,
   goal,
   isActiveGoal = true,
+  onChange = () => {},
 }: AddGoalBlockProps) => {
   const [isActive, setIsActive] = useState<boolean>(
     typeof isActiveGoal === "string" ? JSON.parse(isActiveGoal) : isActiveGoal,
   );
   const [isExpanded, setIsExpanded] = useState(true);
-  const [selectedProducts, setSelectedProducts] = useState(
+  const [goalName, setGoalName] = useState<string>(goal.goalName ?? "");
+
+  const selectedProducts =
     (typeof goal.Products === "string"
       ? JSON.parse(goal.Products)
-      : goal.Products) ?? null,
-  );
-  const [selectedGifts, setSelectedGifts] = useState(
+      : goal.Products) ?? null;
+
+  const selectedGifts =
     (typeof goal.freeGifts === "string"
       ? JSON.parse(goal.freeGifts)
-      : goal.freeGifts) ?? null,
-  );
+      : goal.freeGifts) ?? null;
 
   console.log(selectedGifts, selectedProducts);
 
@@ -90,7 +91,11 @@ const AddGoalBlock = ({
                   onChange={(e) => console.log(e.currentTarget.value)}
                 />
                 <s-heading>Goal {idx + 1}</s-heading>
-                <s-paragraph>Hello There...</s-paragraph>
+                <InlineEditableText
+                  index={idx}
+                  value={goalName}
+                  onSave={setGoalName}
+                />
               </s-stack>
             </s-stack>
             <s-button
@@ -113,24 +118,24 @@ const AddGoalBlock = ({
                 <ConditionBlock
                   isActive={isActive}
                   selectedProducts={selectedProducts}
-                  setSelectedProducts={setSelectedProducts}
                   idx={idx}
                   selectedChoice={goal.condition as AddConditionBlockChoices}
                   selectedProductCondition={goal.productsCondition ?? "any"}
-                  slectedQuantity={goal.cartQuantity ?? "2"}
+                  selectedQuantity={goal.cartQuantity ?? "2"}
                   price={goal.price ?? "100"}
+                  onChange={onChange}
                 />
                 <s-divider />
                 <RewardBlocK
                   isActive={isActive}
                   selectedGifts={selectedGifts}
-                  setSelectedGifts={setSelectedGifts}
                   idx={idx}
                   selectedOfferPercentage={goal.cartDiscount ?? "10"}
                   selectedRewardChoice={
                     (goal.offer as AddRewardBlockChoices) ??
                     AddRewardBlockChoices.FREE_SHIPPING
                   }
+                  onChange={onChange}
                 />
                 <s-divider />
                 <GoalTextBlock
@@ -168,7 +173,9 @@ const AddGoalBlock = ({
                       <s-link
                         target="_blank"
                         tone="critical"
-                        onClick={() => onRemove(id)}
+                        onClick={() => {
+                          onChange();
+                          onRemove(id)}}
                       >
                         Remove
                       </s-link>
@@ -185,3 +192,81 @@ const AddGoalBlock = ({
 };
 
 export default AddGoalBlock;
+
+interface InlineEditableTextProps {
+  value: string;
+  onSave: React.Dispatch<SetStateAction<string>>;
+  index: number;
+}
+
+export const InlineEditableText = ({
+  value,
+  onSave,
+  index,
+}: InlineEditableTextProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input automatically when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleBlur = () => {
+    if (isEditing) {
+      setIsEditing(false);
+      if (inputValue.trim() !== value) {
+        onSave(inputValue.trim());
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setIsEditing(false);
+      onSave(inputValue.trim());
+    }
+    if (e.key === "Escape") {
+      setIsEditing(false);
+      setInputValue(value); // reset to original
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="text"
+        name={`goals[${index}][goalName]`}
+        value={inputValue}
+        readOnly={!isEditing}
+        onDoubleClick={handleDoubleClick}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        style={{
+          border: isEditing ? "1px solid #ccc" : "1px solid transparent",
+          background: isEditing ? "#fff" : "transparent",
+          cursor: isEditing ? "text" : "pointer",
+          padding: "4px 6px",
+          borderRadius: "4px",
+          fontSize: "14px",
+          outline: "none",
+          width: "100%",
+        }}
+      />
+    </>
+  );
+};
