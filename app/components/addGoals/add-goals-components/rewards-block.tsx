@@ -1,28 +1,62 @@
 import { AddRewardBlockChoices } from "app/enums/addBlock";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowPlacer } from "../goal-add-block";
+import { Product } from "@shopify/app-bridge-react";
 
 interface RewardsBlockType {
   isActive: boolean;
-  selectedGifts: any[];
-  setSelectedGifts: any;
+  selectedGifts: Product[];
   idx: number;
   selectedRewardChoice: AddRewardBlockChoices;
   selectedOfferPercentage: string;
+  onChange: () => void;
 }
 
 const RewardBlocK = ({
   isActive,
   selectedGifts,
-  setSelectedGifts,
   idx,
-  selectedOfferPercentage = "10",
-  selectedRewardChoice = AddRewardBlockChoices.FREE_SHIPPING,
+  selectedOfferPercentage,
+  selectedRewardChoice,
 }: RewardsBlockType) => {
   const [selected, setSelected] = useState(selectedRewardChoice);
   const [offerPercentage, setOfferPercentage] = useState(
     selectedOfferPercentage,
   );
+
+  const [onModalSelectedGifts, setOnModalSelectedGifts] =
+    useState(selectedGifts);
+  const selectedGiftsIds =
+    onModalSelectedGifts?.length > 0
+      ? onModalSelectedGifts.map((gift) => ({ id: gift?.id ?? "" }))
+      : [];
+
+  const [errors, setErrors] = useState<{ offers: string; gifts: string }>({
+    offers: "",
+    gifts: "",
+  });
+
+  useEffect(() => {
+    const newError = { offers: "", gifts: "" };
+
+    if (
+      (selected === AddRewardBlockChoices.ORDER_DISCOUNT &&
+        (Number(offerPercentage) < 1 || Number(offerPercentage) > 100)) ||
+      offerPercentage.length <= 0
+    ) {
+      newError.offers = "Must be between 1 and 100";
+    }
+
+    if (
+      (selected === AddRewardBlockChoices.FREE_GIFT &&
+        onModalSelectedGifts?.length === 0) ||
+      selectedGiftsIds.length === 0
+    ) {
+      newError.gifts = "Select at least one product.";
+    }
+
+    setErrors(newError);
+  }, [offerPercentage, selected, selectedGiftsIds.length]);
 
   return (
     <>
@@ -48,23 +82,37 @@ const RewardBlocK = ({
                   onChange={(e) =>
                     setSelected(e.currentTarget.value as AddRewardBlockChoices)
                   }
+                  required
+                  error={
+                    selected === AddRewardBlockChoices.FREE_GIFT
+                      ? errors.gifts
+                      : undefined
+                  }
                 >
                   <s-option
                     value={AddRewardBlockChoices.FREE_SHIPPING}
-                    selected
                     disabled={!isActive}
+                    defaultSelected={
+                      selected === AddRewardBlockChoices.FREE_SHIPPING
+                    }
                   >
                     Free Shipping
                   </s-option>
                   <s-option
                     value={AddRewardBlockChoices.ORDER_DISCOUNT}
                     disabled={!isActive}
+                    defaultSelected={
+                      selected === AddRewardBlockChoices.ORDER_DISCOUNT
+                    }
                   >
                     Order Discount
                   </s-option>
                   <s-option
                     value={AddRewardBlockChoices.FREE_GIFT}
                     disabled={!isActive}
+                    defaultSelected={
+                      selected === AddRewardBlockChoices.FREE_GIFT
+                    }
                   >
                     Free Gift
                   </s-option>
@@ -98,9 +146,11 @@ const RewardBlocK = ({
                         const selected = await shopify.resourcePicker({
                           type: "product",
                           multiple: true,
+                          selectionIds: selectedGiftsIds,
                         });
-                        setSelectedGifts(selected);
-                        console.log(selected);
+                        if (selected) {
+                          setOnModalSelectedGifts(selected as Product[]);
+                        }
                       }}
                       disabled={!isActive}
                     >
@@ -109,9 +159,12 @@ const RewardBlocK = ({
                     <input
                       hidden
                       name={`goals[${idx}][freeGifts]`}
-                      value={JSON.stringify(selectedGifts)}
-                      onChange={() => console.log("Hello There...")}
+                      value={JSON.stringify(onModalSelectedGifts)}
+                      onChange={() => {}}
                     />
+                    {errors.gifts.length > 0 && (
+                      <input hidden name="prevent_save" required />
+                    )}
                   </s-stack>
                 </>
               ) : (
@@ -123,15 +176,22 @@ const RewardBlocK = ({
                         label="Orger Discount"
                         labelAccessibilityVisibility="exclusive"
                         name={`goals[${idx}][cartDiscount]`}
+                        min={1}
+                        max={100}
                         step={1}
                         defaultValue="2"
                         suffix="%"
                         value={offerPercentage}
+                        error={errors.offers}
                         onChange={(e) =>
                           setOfferPercentage(e.currentTarget.value)
                         }
                         readOnly={!isActive}
+                        required
                       ></s-number-field>
+                      {errors.offers.length > 0 && (
+                        <input hidden name="prevent_save" required />
+                      )}
                     </s-box>
                   </s-stack>
                 </>
@@ -139,19 +199,25 @@ const RewardBlocK = ({
             </s-stack>
 
             {selected === AddRewardBlockChoices.FREE_GIFT &&
-              selectedGifts?.length > 0 && (
+              onModalSelectedGifts?.length > 0 && (
                 <>
                   <s-divider />
                   {/** Shows Selected Products */}
                   <s-box border="base strong solid" padding="small base">
                     <s-table>
-                      <s-table-header-row listSlot="primary">
-                        <s-table-header>Product</s-table-header>
-                        <s-table-header>price</s-table-header>
-                        <s-table-header>Remove</s-table-header>
+                      <s-table-header-row>
+                        <s-table-header listSlot="primary">
+                          Product
+                        </s-table-header>
+                        <s-table-header listSlot="secondary">
+                          price
+                        </s-table-header>
+                        <s-table-header listSlot="inline">
+                          Remove
+                        </s-table-header>
                       </s-table-header-row>
                       <s-table-body>
-                        {selectedGifts.map((gift) => (
+                        {onModalSelectedGifts.map((gift) => (
                           <s-table-row key={gift.id}>
                             <s-table-cell>{gift.title}</s-table-cell>
                             <s-table-cell>
@@ -161,10 +227,11 @@ const RewardBlocK = ({
                               <s-link
                                 target="_blank"
                                 onClick={() => {
-                                  const filteredProducts = selectedGifts.filter(
-                                    (removable) => removable.id !== gift.id,
-                                  );
-                                  setSelectedGifts(filteredProducts);
+                                  const filteredProducts =
+                                    onModalSelectedGifts.filter(
+                                      (removable) => removable.id !== gift.id,
+                                    );
+                                  setOnModalSelectedGifts(filteredProducts);
                                 }}
                               >
                                 Remove

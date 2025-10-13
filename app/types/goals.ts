@@ -6,6 +6,7 @@ type Product = {
 type GoalBase = {
   isActive: "true" | "false";
   title: string;
+  goalName?: string;
   headline: string;
   topBarHeadlineIcons: string;
   topBarHeadlineSimple: string;

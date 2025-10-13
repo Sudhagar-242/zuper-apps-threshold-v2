@@ -1,5 +1,7 @@
+import AddGoalBlock from "app/components/addGoals/goal-add-block";
 import React, { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import GoalTab from "./app.configuration-add-goals";
 
 const steps = [
   {
@@ -30,56 +32,48 @@ const steps = [
 
 const Configuration = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    navigate(steps[0].path, { replace: true });
-  }, []);
+  navigate("add-goals-tab");
 
   return (
-    <s-page>
-      <s-box paddingInlineStart="small" paddingBlockStart="large">
-        <s-stack alignItems="center" gap="large small-300" direction="inline">
-          <s-button icon="arrow-left" accessibilityLabel="back" href="/app" />
-          <s-heading>Goal Configuration</s-heading>
-        </s-stack>
-      </s-box>
-
-      {/* Tabs */}
-      <s-section>
-        <s-stack direction="inline" gap="large small-300">
-          {steps.map((step, index) => (
-            <s-box key={index}>
-              <NavLink to={step.path} style={{ textDecoration: "none" }}>
-                {({ isActive }) => (
-                  <s-clickable
-                    border="base"
-                    padding="small-400"
-                    background={isActive ? "strong" : "subdued"}
-                    borderRadius="base"
-                  >
-                    <s-stack
-                      direction="inline"
-                      alignItems="center"
-                      gap="small-200"
-                    >
-                      <s-icon type="home" />
-                      <s-stack alignItems="start">
-                        <s-heading>{step.title}</s-heading>
-                        <s-paragraph>{step.info}</s-paragraph>
-                      </s-stack>
-                    </s-stack>
-                  </s-clickable>
-                )}
-              </NavLink>
-            </s-box>
-          ))}
-        </s-stack>
-      </s-section>
-
-      {/* Tab content */}
-      <Outlet />
-    </s-page>
+    <h4>Not Here <s-link href="app/configuration-add-goals">Goto Correct Page....</s-link></h4>
   );
 };
 
 export default Configuration;
+
+
+      //   {/* for later adding the tbs */}
+      //   {/* Tabs */}
+      //   {/* <s-section>
+      //   <s-stack direction="inline" gap="large small-300">
+      //     {steps.map((step, index) => (
+      //       <s-box key={index}>
+      //         <NavLink to={step.path} style={{ textDecoration: "none" }}>
+      //           {({ isActive }) => (
+      //             <s-clickable
+      //               border="base"
+      //               padding="small-400"
+      //               background={isActive ? "strong" : "subdued"}
+      //               borderRadius="base"
+      //             >
+      //               <s-stack
+      //                 direction="inline"
+      //                 alignItems="center"
+      //                 gap="small-200"
+      //               >
+      //                 <s-icon type="home" />
+      //                 <s-stack alignItems="start">
+      //                   <s-heading>{step.title}</s-heading>
+      //                   <s-paragraph>{step.info}</s-paragraph>
+      //                 </s-stack>
+      //               </s-stack>
+      //             </s-clickable>
+      //           )}
+      //         </NavLink>
+      //       </s-box>
+      //     ))}
+      //   </s-stack>
+      // </s-section> */}
+
+      //   {/* Tab content */}
+      //   // <Outlet />

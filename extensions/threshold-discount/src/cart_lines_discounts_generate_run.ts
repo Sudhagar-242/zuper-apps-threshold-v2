@@ -2,7 +2,6 @@ import { GoalType } from "app/types/goals";
 import {
   DiscountClass,
   OrderDiscountSelectionStrategy,
-  ProductDiscountSelectionStrategy,
   CartInput,
   CartLinesDiscountsGenerateRunResult,
   OrderDiscountCandidate,
@@ -16,36 +15,34 @@ import {
 function generateDiscountOperation(
   goal: GoalType,
   cart: {
-    __typename?: "Cart" | undefined;
     lines: {
-      __typename?: "CartLine" | undefined;
       id: string;
       cost: {
-        __typename?: "CartLineCost" | undefined;
         subtotalAmount: {
-          __typename?: "MoneyV2" | undefined;
           amount: any;
         };
       };
     }[];
   },
 ): OrderDiscountCandidate | undefined {
-  const cartProductIdSet = cart.lines.map((line) => line.id);
+  // Map line IDs once
+  const cartProductIdSet = new Set(cart.lines.map((line) => line.id));
 
-  function checkHasProductCondition(): boolean {
-    const goalProducts: Product[] = JSON.parse(goal.Products ?? "") ?? [];
-    console.log(goalProducts, "goalproducts", goal.Products);
+  // Check for product condition
+  const checkHasProductCondition = (): boolean => {
+    const goalProducts: Product[] = JSON.parse(goal.Products ?? "[]");
     const productsCondition = goal.productsCondition;
 
     if (productsCondition === "any") {
       return goalProducts.some((product) => cartProductIdSet.has(product.id));
-    } else if (productsCondition === "all") {
+    }
+    if (productsCondition === "all") {
       return goalProducts.every((product) => cartProductIdSet.has(product.id));
     }
-
     return false;
-  }
+  };
 
+  // Generate discount candidate based on condition type
   switch (goal.condition) {
     case AddConditionBlockChoices.CART_VALUE:
       return {
@@ -60,16 +57,10 @@ function generateDiscountOperation(
         ],
         targets: [
           {
-            orderSubtotal: {
-              excludedCartLineIds: [],
-            },
+            orderSubtotal: { excludedCartLineIds: [] },
           },
         ],
-        value: {
-          percentage: {
-            value: goal.cartDiscount,
-          },
-        },
+        value: { percentage: { value: goal.cartDiscount } },
       };
 
     case AddConditionBlockChoices.CART_HAS_PRODUCTS:
@@ -78,16 +69,10 @@ function generateDiscountOperation(
           message: goal.title,
           targets: [
             {
-              orderSubtotal: {
-                excludedCartLineIds: [],
-              },
+              orderSubtotal: { excludedCartLineIds: [] },
             },
           ],
-          value: {
-            percentage: {
-              value: goal.cartDiscount,
-            },
-          },
+          value: { percentage: { value: goal.cartDiscount } },
         };
       }
       return undefined;
@@ -98,23 +83,17 @@ function generateDiscountOperation(
         conditions: [
           {
             cartLineMinimumQuantity: {
-              ids: cartProductIdSet,
-              minimumQuantity: Number(goal.cartQuantity),
+              ids: Array.from(cartProductIdSet),
+              minimumQuantity: Number(goal.cartQuantity) + 1,
             },
           },
         ],
         targets: [
           {
-            orderSubtotal: {
-              excludedCartLineIds: [],
-            },
+            orderSubtotal: { excludedCartLineIds: [] },
           },
         ],
-        value: {
-          percentage: {
-            value: goal.cartDiscount,
-          },
-        },
+        value: { percentage: { value: goal.cartDiscount } },
       };
 
     default:
@@ -138,92 +117,38 @@ export function cartLinesDiscountsGenerateRun(
 
   const { shop, cart } = input;
 
-  const goals = JSON.parse(shop.goals?.value).filter(
-    (goal) =>
-      goal.isActive === "true" &&
-      goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT,
-  );
+  // Safely parse and filter active goals with order discounts
+  const goals: GoalType[] = shop.goals?.value
+    ? JSON.parse(shop.goals.value).filter(
+        (goal: GoalType) =>
+          goal.isActive === "true" &&
+          goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT,
+      )
+    : [];
 
   if (!hasOrderDiscountClass && !hasProductDiscountClass) {
     return { operations: [] };
   }
 
-  const maxCartLine = input.cart.lines.reduce((maxLine, line) => {
-    if (line.cost.subtotalAmount.amount > maxLine.cost.subtotalAmount.amount) {
-      return line;
-    }
-    return maxLine;
-  }, input.cart.lines[0]);
-
-  const operations: CartLinesDiscountsGenerateRunResult["operations"] = [];
-
+  // Generate discount candidates from goals
   const discountCandidates: OrderDiscountCandidate[] = goals
-    ? (goals
-        .map((goal) => generateDiscountOperation(goal, cart))
-        .filter(Boolean) as OrderDiscountCandidate[])
-    : [
-        {
-          message: "10% OFF ORDER",
-          conditions: [
-            {
-              cartLineMinimumQuantity: {
-                ids: [...input.cart.lines.map((line) => line.id)],
-                minimumQuantity: 1,
-              },
-            },
-          ],
-          targets: [
-            {
-              orderSubtotal: {
-                excludedCartLineIds: [],
-              },
-            },
-          ],
-          value: {
-            percentage: {
-              value: 10,
-            },
-          },
-        },
-      ];
+    .map((goal) => generateDiscountOperation(goal, cart))
+    .filter(Boolean) as OrderDiscountCandidate[];
 
-  console.log(JSON.stringify(discountCandidates));
+  if (!discountCandidates.length) {
+    return { operations: [] };
+  }
+
+  const operations = [];
 
   if (hasOrderDiscountClass) {
     operations.push({
       orderDiscountsAdd: {
-        candidates: [...discountCandidates],
+        candidates: discountCandidates,
         selectionStrategy: OrderDiscountSelectionStrategy.First,
       },
     });
   }
 
-  if (hasProductDiscountClass) {
-    operations.push({
-      productDiscountsAdd: {
-        candidates: [
-          {
-            message: "20% OFF PRODUCT",
-            targets: [
-              {
-                cartLine: {
-                  id: maxCartLine.id,
-                },
-              },
-            ],
-            value: {
-              percentage: {
-                value: 20,
-              },
-            },
-          },
-        ],
-        selectionStrategy: ProductDiscountSelectionStrategy.First,
-      },
-    });
-  }
-
-  return {
-    operations,
-  };
+  return { operations };
 }
