@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import AddGoalBlock from "app/components/addGoals/goal-add-block";
-import { GoalType } from "app/types/goals";
+import React, { useEffect, useState } from "react";
 import {
   LoaderFunctionArgs,
-  useLoaderData,
   ActionFunctionArgs,
+  useLoaderData,
+  useFetcher,
   useSubmit,
 } from "react-router";
 import { authenticate } from "app/shopify.server";
@@ -13,9 +12,12 @@ import {
   GET_GOALS_METAFIELD_QUERY,
 } from "app/graphql/get-and-update-goals-metafield";
 import { ensureDiscountExists } from "app/utils/create-discount-function-existance";
-import { FormSaveBarStatusProvider } from "app/context/form-save-bar-status";
+import FormComponent from "app/components/addGoals/formExampleComponent";
+import { GoalType } from "app/types/goals";
+import { ShopProvider } from "app/context/shop-provider-ctx";
+import { AddRewardBlockChoices } from "app/enums/addBlock";
 
-interface loaderResponse {
+export interface loaderResponse {
   shop: {
     id: string;
     name: string;
@@ -41,23 +43,6 @@ interface loaderResponse {
     }>;
   };
 }
-
-const createEmptyGoal: GoalType = {
-  id: crypto.randomUUID(),
-  title: "",
-  goalName: "Discount",
-  isActive: "true",
-  condition: "cart_value",
-  price: "1",
-  offer: "free_shipping",
-  headline: "Buy YYY and get free gift",
-  topBarHeadlineIcons: "Free gift",
-  topBarHeadlineSimple: "Buy YYY to get free gift",
-  confirmationMessage: "You got free gift",
-  remainingTargetMessage: `%remaining% left`,
-  discountAppliedMessage: "Free gift",
-  compined: "true",
-};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { admin } = await authenticate.admin(request);
@@ -97,248 +82,175 @@ export async function action({ request }: ActionFunctionArgs) {
   return null;
 }
 
-const parseGoalsFromForm = (formData: FormData) => {
-  const parsed = [];
-
-  for (const [key, value] of formData.entries()) {
-    const match = key.match(/^goals\[(\d+)]\[(.+)]$/);
-    if (!match) continue;
-
-    const index = Number(match[1]);
-    const field = match[2];
-
-    if (!parsed[index]) parsed[index] = {};
-    parsed[index][field] = value.toString();
-  }
-
-  return parsed;
-};
-
-export default function GoalTab() {
-  const { id: shopId, goals: goalsMetafield } = useLoaderData<typeof loader>();
+const FormCreation = () => {
+  const Shop = useLoaderData<typeof loader>();
   const submit = useSubmit();
-  // Last saved state of goals
-  const [savedGoals, setSavedGoals] = useState(
-    JSON.parse(goalsMetafield?.value as string),
+
+  // const [savedGoals, setSavedGoals] = useState<GoalType[]>([]);
+  // const [goals, setGoals] = useState<GoalType[]>([]);
+
+  const [savedGoals, setSavedGoals] = useState<GoalType[]>(
+    Shop.goals
+      ? typeof Shop.goals.value === "string"
+        ? JSON.parse(Shop.goals?.value)
+        : Shop.goals.value
+      : [],
   );
-  // goals used for rendering; changes live here
-  const [goals, setGoals] = useState<GoalType[]>(savedGoals);
-  const [UnSavedChanges, setUnSavedChanges] = useState(false);
-
-  const [savedOrNot, setSavedOrNot] = useState(true);
-  const [preventSaveBar, setPreventSaveBar] = useState(false);
-
-  const [validationErrors, setValidationErrors] = useState<
-    { index: number; message: string }[]
-  >([]);
-
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const formRef = useRef(null);
-  console.log(formRef);
+  const [goals, setGoals] = useState<GoalType[]>(
+    Shop.goals
+      ? typeof Shop.goals.value === "string"
+        ? JSON.parse(Shop.goals?.value)
+        : Shop.goals?.value
+      : [],
+  );
+  const [isDirty, setIsDirty] = useState(false);
+  const [hasError, setHasError] = useState<{ id: string; error: boolean }[]>(
+    [],
+  );
 
   useEffect(() => {
-    if (UnSavedChanges) {
-      triggerChange();
+    setIsDirty(JSON.stringify(goals) !== JSON.stringify(savedGoals));
+  }, [goals, savedGoals]);
+  console.log("loader", Shop);
+  useEffect(() => {
+    if (isDirty) {
+      shopify.saveBar.show("my-save-bar");
+    } else {
+      shopify.saveBar.hide("my-save-bar");
     }
-  }, [goals, UnSavedChanges]);
+  }, [isDirty]);
 
-  const triggerChange = () => {
-    if (inputRef.current) {
-      inputRef.current.value = JSON.stringify(Math.random());
-      inputRef.current.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+  // Handle field changes
+  const updateGoalField = (goal: GoalType) => {
+    setGoals((prev) => prev.map((g) => (g.id === goal.id ? goal : g)));
   };
 
-  // Add new empty input group
-  const handleAdd = () => {
-    if (!AnyDuplicate(goals, createEmptyGoal)) {
-      setGoals((prev) => [...prev, createEmptyGoal]);
-      setUnSavedChanges(true);
-      return null;
+  // Add a new blank goal
+  const addGoal = () => {
+    const newGoal: GoalType = {
+      id: `goal_${Date.now()}`,
+      title: `Goal #${goals.length + 1}`,
+      isActive: true,
+      headline: "%remaining% more for %discount% off",
+      topBarHeadlineIcons: "%discount% discount",
+      topBarHeadlineSimple: "Spend %remaining% more to get %discount% off",
+      confirmationMessage: "You got %discount% off",
+      remainingTargetMessage: "%remaining% away",
+      discountAppliedMessage: "%discount% off",
+      compined: true,
+      condition: "cart_value",
+      price: "0",
+      offer: AddRewardBlockChoices.FREE_SHIPPING
+      ,
+    };
+    setGoals((prev) => [...prev, newGoal]);
+  };
+
+  const handleRemove = (id: string) => {
+    setGoals((prev) => prev.filter((goal) => goal.id !== id));
+  };
+
+  const handleSave = () => {
+    console.log(goals);
+    const isSafe =
+      hasError.length === 0
+        ? true
+        : hasError.some((error) => error.error === true);
+    if (!isSafe) {
+      const formData = new FormData();
+      formData.append("shopId", Shop.id);
+      formData.append("goals", JSON.stringify(goals));
+
+      // This triggers the Remix action above
+      submit(formData, { method: "post" });
+
+      setSavedGoals(goals);
+      setIsDirty(false);
     }
-    shopify.toast.show("No Duplicaes Are Allowed", {
-      isError: true,
-      duration: 1200,
-    });
-    return null;
+    console.log("error", hasError);
   };
 
-  // Remove input group by index
-  const handleRemove = (index: number) => {
-    setGoals((prev) => prev.filter((_, i) => i !== index));
-    setUnSavedChanges(true);
-  };
-
-  // Save: update savedGoals and goals state
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const parsedData = parseGoalsFromForm(formData) as GoalType[];
-
-    const { isValid, validGoals, errors } = validateAndCleanGoals(goals);
-    console.log({ isValid, validGoals, errors });
-
-    if (!AnyDuplicate(goals, createEmptyGoal)) {
-      submit({ goals: JSON.stringify(parsedData), shopId }, { method: "POST" });
-      setSavedGoals(parsedData);
-      setGoals(parsedData);
-      setUnSavedChanges(false);
-      setSavedOrNot(true);
-      setPreventSaveBar(false);
-      shopify.toast.show("Saved data");
-      return null;
-    }
-    shopify.toast.show("No Duplicaes Are Allowed", {
-      isError: true,
-      duration: 1200,
-    });
-  };
-
-  // Discard: reset goals to last savedGoals on form reset
-  const handleDiscard = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    console.log("discarded");
+  const handleDiscard = () => {
+    setHasError((prev) =>
+      prev
+        .filter((error) => savedGoals.some((g) => g.id === error.id))
+        .map((error) => ({ ...error, error: false })),
+    );
     setGoals(savedGoals);
-    setUnSavedChanges(false);
-    setSavedOrNot(false);
-    shopify.toast.show("Changes discarded, reverted to last saved state.");
+    setIsDirty(false);
   };
+
   return (
-    <FormSaveBarStatusProvider
-      savedOrNot={savedOrNot}
-      setSavedOrNot={setSavedOrNot}
-    >
-      <s-page>
-        <s-stack gap="large">
-          <s-box paddingInlineStart="small" paddingBlockStart="large">
-            <s-stack alignItems="center" gap="large" direction="inline">
-              <s-button
-                variant="tertiary"
-                type="button"
-                icon="arrow-left"
-                accessibilityLabel="back"
-                href="/app"
-              />
-              <h2>Goal Configuration</h2>
-            </s-stack>
-          </s-box>
-          <form
-            data-save-bar
-            data-discard-confirmation
-            onSubmit={handleSubmit}
-            onReset={handleDiscard}
-            ref={formRef}
-          >
-            <input
-              hidden
-              ref={inputRef}
-              name="update_save-bar"
-              value={String(Boolean)}
-              onChange={() => {}}
-            />
-            {preventSaveBar && (
-              <input
-                type="hidden"
-                aria-hidden
-                name="prevent_save-bar"
-                onChange={() => {}}
-                required
-              />
-            )}
-            <s-page>
-              {goals?.length > 0 ? (
-                goals.map((goal, index) => (
-                  <AddGoalBlock
-                    key={`goal-${index}`}
-                    id={`goal-${index}`}
-                    idx={index}
-                    goal={goal}
-                    isActiveGoal={goal.isActive === "true"}
-                    onChange={() => setUnSavedChanges(true)}
-                    onRemove={() => handleRemove(index)}
-                  />
-                ))
-              ) : (
-                <s-banner heading="No Goals" tone="info">
-                  No Goals Were Created
-                </s-banner>
-              )}
-
-              <s-stack
-                direction="inline"
-                gap="base"
-                padding="base"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <s-button type="button" variant="primary" onClick={handleAdd}>
-                  Add New Goal
-                </s-button>
-
-                {UnSavedChanges && (
-                  <s-button type="submit" variant="primary">
-                    Save
-                  </s-button>
-                )}
+    <>
+      <ShopProvider shop={Shop}>
+        <s-page>
+          <s-stack gap="large">
+            <s-box paddingInlineStart="small" paddingBlockStart="large">
+              <s-stack alignItems="center" gap="large" direction="inline">
+                <s-button
+                  variant="tertiary"
+                  type="button"
+                  icon="arrow-left"
+                  accessibilityLabel="back"
+                  href="/app"
+                />
+                <h2>Goal Configuration</h2>
               </s-stack>
-            </s-page>
-          </form>
-        </s-stack>
-      </s-page>
-    </FormSaveBarStatusProvider>
+            </s-box>
+            {goals?.length > 0 ? (
+              goals.map((goal) => (
+                <React.Fragment key={goal.id}>
+                  <FormComponent
+                    goal={goal}
+                    onChange={updateGoalField}
+                    onRemove={handleRemove}
+                    AllGoals={goals}
+                    announceError={(id: string, error: boolean) => {
+                      setHasError((prev) => {
+                        const updated = prev.filter((entry) => entry.id !== id);
+                        return [...updated, { id, error }];
+                      });
+                    }}
+                  />
+                </React.Fragment>
+              ))
+            ) : (
+              <s-banner heading="No Goals" tone="info">
+                No Goals Were Created
+              </s-banner>
+            )}
+
+            <s-stack
+              direction="inline"
+              gap="base"
+              padding="base"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <s-button type="button" variant="primary" onClick={addGoal}>
+                Add New Goal
+              </s-button>
+
+              {isDirty && (
+                <s-button type="submit" variant="primary" onClick={handleSave}>
+                  Save
+                </s-button>
+              )}
+            </s-stack>
+          </s-stack>
+        </s-page>
+
+        <div id="portals">
+          <ui-save-bar id="my-save-bar">
+            <button onClick={handleDiscard}>Discard</button>
+            <button variant="primary" onClick={handleSave}>
+              Save
+            </button>
+          </ui-save-bar>
+        </div>
+      </ShopProvider>
+    </>
   );
-}
-
-type ValidationResult = {
-  isValid: boolean;
-  validGoals: GoalType[];
-  errors: Array<{ index: number; message: string }>;
 };
 
-function validateAndCleanGoals(goals: GoalType[]): ValidationResult {
-  const validGoals: GoalType[] = [];
-  const errors: Array<{ index: number; message: string }> = [];
-
-  return {
-    isValid: errors.length === 0,
-    validGoals,
-    errors,
-  };
-}
-
-const AnyDuplicate = (goals: GoalType[], NewGoal: GoalType): boolean => {
-  for (const goal of goals) {
-    // if (goal.title === NewGoal.title) {
-    //   return true;
-    // }
-
-    switch (goal.condition) {
-      case "cart_value":
-        if (goal.price === NewGoal.price) {
-          return true;
-        }
-        break;
-      case "cart_quantity":
-        if (goal.cartQuantity === NewGoal.cartQuantity) {
-          return true;
-        }
-        break;
-      default:
-        // no condition match, continue checking other goals
-        break;
-    }
-
-    switch (goal.offer) {
-      case "order_discount":
-        if (goal.cartDiscount === NewGoal.cartDiscount) {
-          return true;
-        }
-        break;
-      default:
-        // no offer match, continue checking other goals
-        break;
-    }
-  }
-  return false; // no duplicates found
-};
+export default FormCreation;

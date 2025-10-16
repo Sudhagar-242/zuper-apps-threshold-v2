@@ -563,7 +563,7 @@ const FormComponent = ({
               gap="large"
             >
               <s-switch
-                checked={JSON.parse(goal.isActive)}
+                checked={goal.isActive}
                 onChange={(e) => {
                   handleInputChange(
                     "isActive",
@@ -571,10 +571,20 @@ const FormComponent = ({
                   );
                 }}
                 accessibilityLabel="isActive"
-                defaultChecked={JSON.parse(goal.isActive)}
+                defaultChecked={goal.isActive}
               ></s-switch>
               <s-stack alignContent="start">
-                <s-heading>Goal {goal.id + 1}</s-heading>
+                <s-heading>{goal.title}</s-heading>
+                <input
+                  type="text"
+                  value={goal.title}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    outline: "none",
+                  }}
+                />
                 <s-text>
                   spend {goal.price} to get {goal.condition}
                 </s-text>

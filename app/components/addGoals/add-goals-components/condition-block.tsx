@@ -3,6 +3,8 @@ import { AddConditionBlockChoices } from "app/enums/addBlock";
 import { ArrowPlacer } from "../goal-add-block";
 import { CallbackEvent } from "@shopify/polaris-types";
 import { GoalType } from "app/types/goals";
+import { useShop } from "app/context/shop-provider-ctx";
+import { loaderResponse } from "app/routes/app.configuration-add-goals";
 
 interface ConditionBlockProps {
   goal: GoalType;
@@ -38,6 +40,8 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
 }) => {
   const [isErrors, setIsErrors] = useState<typeof errors>(errors);
 
+  const Shop = useShop<loaderResponse["shop"]>();
+
   useEffect(() => {
     const newErrors: typeof errors = {};
 
@@ -67,15 +71,31 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
   }, [goal.condition, goal.products, isActive]);
 
   const handleProductSelect = async () => {
+    const selectedProducts =
+      typeof goal.products === "string"
+        ? JSON.parse(goal.products)
+        : (goal.products ?? []);
+
+    const exclusionQuery = selectedProducts
+      .map((product) => `-id:${product.id}`)
+      .join(" ");
+
+    const filterQuery = `status:active ${exclusionQuery}`;
+
+    console.log(exclusionQuery);
+
     if (!isActive) return;
     // Assuming `shopify.resourcePicker` is globally available or imported
     const selected = await window.shopify?.resourcePicker({
       type: "product",
       multiple: true,
-      selectionIds:
-        typeof goal.products === "string"
-          ? JSON.parse(goal?.products)
-          : goal.products,
+      filter: {
+        query: filterQuery,
+      },
+      // selectionIds:
+      //   typeof goal.products === "string"
+      //     ? JSON.parse(goal?.products)
+      //     : goal.products,
     });
     if (selected) {
       onChange("products", selected);
@@ -204,8 +224,8 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
                     error-message={isErrors.price}
                   />
                   <p style={{ maxWidth: "240px" }}>
-                    <b>Notice:</b> All other currencies not set will be{" "}
-                    <b>converted</b> to <b>100 USD</b>.
+                    <b>Notice: </b>All goal values are based on your store’s
+                    default currency <b>({Shop.currencyCode}).</b>
                   </p>
                 </s-box>
               </s-stack>
