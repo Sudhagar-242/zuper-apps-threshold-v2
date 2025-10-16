@@ -123,11 +123,7 @@ export default function Index() {
 
   return (
     <s-page heading="ZuperApps Goalify">
-      <s-button
-        slot="primary-action"
-        variant="primary"
-        onClick={generateProduct}
-      >
+      <s-button slot="primary-action" onClick={generateProduct}>
         Create Goal
       </s-button>
       <s-banner tone="warning" heading="App widget status">
@@ -136,7 +132,7 @@ export default function Index() {
           below.
         </s-paragraph>
         <s-button
-          slot="primary"
+          slot="secondary-actions"
           aria-label="Activate widget"
           href={`https://${shop}/admin/themes/current/editor?context=apps&template=${"main"}&activateAppId=${api_key}/${"app-embed-block"}`}
         >

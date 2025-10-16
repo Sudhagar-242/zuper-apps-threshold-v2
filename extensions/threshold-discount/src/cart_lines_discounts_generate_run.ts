@@ -22,11 +22,19 @@ function generateDiscountOperation(
           amount: any;
         };
       };
+      merchandise: {
+        product: {
+          id: string;
+        };
+      };
     }[];
   },
 ): OrderDiscountCandidate | undefined {
   // Map line IDs once
-  const cartProductIdSet = new Set(cart.lines.map((line) => line.id));
+  const cartProductIdSet = new Set(
+    cart.lines.map((line) => line.merchandise.product.id),
+  );
+  const cartLineIdSet = new Set(cart.lines.map((line) => line.id));
 
   // Check for product condition
   const checkHasProductCondition = (): boolean => {
@@ -69,10 +77,16 @@ function generateDiscountOperation(
           message: goal.title,
           targets: [
             {
-              orderSubtotal: { excludedCartLineIds: [] },
+              orderSubtotal: {
+                excludedCartLineIds: [],
+              },
             },
           ],
-          value: { percentage: { value: goal.cartDiscount } },
+          value: {
+            percentage: {
+              value: goal.cartDiscount,
+            },
+          },
         };
       }
       return undefined;
@@ -83,7 +97,7 @@ function generateDiscountOperation(
         conditions: [
           {
             cartLineMinimumQuantity: {
-              ids: Array.from(cartProductIdSet),
+              ids: Array.from(cartLineIdSet),
               minimumQuantity: Number(goal.cartQuantity) + 1,
             },
           },
@@ -130,6 +144,8 @@ export function cartLinesDiscountsGenerateRun(
     return { operations: [] };
   }
 
+  console.log(JSON.stringify(cart.lines));
+
   // Generate discount candidates from goals
   const discountCandidates: OrderDiscountCandidate[] = goals
     .map((goal) => generateDiscountOperation(goal, cart))
@@ -145,7 +161,7 @@ export function cartLinesDiscountsGenerateRun(
     operations.push({
       orderDiscountsAdd: {
         candidates: discountCandidates,
-        selectionStrategy: OrderDiscountSelectionStrategy.First,
+        selectionStrategy: OrderDiscountSelectionStrategy.Maximum,
       },
     });
   }

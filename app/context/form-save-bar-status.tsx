@@ -18,9 +18,7 @@ export const FormSaveBarStatusProvider = ({
   setSavedOrNot,
 }: {
   children: ReactNode;
-  savedOrNot: boolean;
-  setSavedOrNot: React.Dispatch<React.SetStateAction<boolean>>;
-}) => {
+} & FormSaveBarContextType) => {
   return (
     <FormSaveBarStatusContext.Provider value={{ savedOrNot, setSavedOrNot }}>
       {children}

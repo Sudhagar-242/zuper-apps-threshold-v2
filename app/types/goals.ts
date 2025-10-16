@@ -1,10 +1,8 @@
-type Product = {
-  id: string;
-  title: string;
-};
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 type GoalBase = {
-  isActive: "true" | "false";
+  id: string;
+  isActive: boolean;
   title: string;
   goalName?: string;
   headline: string;
@@ -13,7 +11,7 @@ type GoalBase = {
   confirmationMessage: string;
   remainingTargetMessage: string;
   discountAppliedMessage: string;
-  compined: "true" | "false";
+  compined: boolean;
 };
 
 // Condition-specific fields
@@ -22,13 +20,13 @@ type CartValueCondition = {
   price: string; // required
   cartQuantity?: never;
   productsCondition?: never;
-  Products?: never;
+  products?: never;
 };
 
 type HasProductCondition = {
   condition: "has_product";
   productsCondition: "any" | "all";
-  Products: string; // stringified JSON array of Product objects
+  products: Product[]; // stringified JSON array of Product objects
   price?: never;
   cartQuantity?: never;
 };
@@ -38,7 +36,7 @@ type CartQuantityCondition = {
   cartQuantity: string;
   price?: never;
   productsCondition?: never;
-  Products?: never;
+  products?: never;
 };
 
 // Offer-specific fields
@@ -56,12 +54,15 @@ type OrderDiscountOffer = {
 
 type FreeGiftOffer = {
   offer: "free_gift";
-  freeGifts: string; // stringified JSON array of Product objects
+  freeGifts: Product[]; // stringified JSON array of Product objects
   cartDiscount?: never;
 };
 
 // Combined type for conditions and offers
-type GoalCondition = CartValueCondition | HasProductCondition | CartQuantityCondition;
+type GoalCondition =
+  | CartValueCondition
+  | HasProductCondition
+  | CartQuantityCondition;
 type GoalOffer = FreeShippingOffer | OrderDiscountOffer | FreeGiftOffer;
 
 // Final Goal type

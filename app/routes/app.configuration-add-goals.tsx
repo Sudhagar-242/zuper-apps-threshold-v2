@@ -43,11 +43,12 @@ interface loaderResponse {
 }
 
 const createEmptyGoal: GoalType = {
+  id: crypto.randomUUID(),
   title: "",
   goalName: "Discount",
   isActive: "true",
   condition: "cart_value",
-  price: "100",
+  price: "1",
   offer: "free_shipping",
   headline: "Buy YYY and get free gift",
   topBarHeadlineIcons: "Free gift",
@@ -124,9 +125,17 @@ export default function GoalTab() {
   const [goals, setGoals] = useState<GoalType[]>(savedGoals);
   const [UnSavedChanges, setUnSavedChanges] = useState(false);
 
-  const [savedOrNot, setSavedOrNot] = useState(null);
+  const [savedOrNot, setSavedOrNot] = useState(true);
+  const [preventSaveBar, setPreventSaveBar] = useState(false);
+
+  const [validationErrors, setValidationErrors] = useState<
+    { index: number; message: string }[]
+  >([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const formRef = useRef(null);
+  console.log(formRef);
 
   useEffect(() => {
     if (UnSavedChanges) {
@@ -143,8 +152,16 @@ export default function GoalTab() {
 
   // Add new empty input group
   const handleAdd = () => {
-    setGoals((prev) => [...prev, createEmptyGoal]);
-    setUnSavedChanges(true);
+    if (!AnyDuplicate(goals, createEmptyGoal)) {
+      setGoals((prev) => [...prev, createEmptyGoal]);
+      setUnSavedChanges(true);
+      return null;
+    }
+    shopify.toast.show("No Duplicaes Are Allowed", {
+      isError: true,
+      duration: 1200,
+    });
+    return null;
   };
 
   // Remove input group by index
@@ -156,28 +173,41 @@ export default function GoalTab() {
   // Save: update savedGoals and goals state
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    const formData = new FormData(event.currentTarget);
     const parsedData = parseGoalsFromForm(formData) as GoalType[];
-    submit({ goals: JSON.stringify(parsedData), shopId }, { method: "POST" });
-    setSavedGoals(parsedData);
-    setGoals(parsedData);
-    setUnSavedChanges(false);
-    setSavedOrNot(true);
-    alert("Saved data:\n" + JSON.stringify(parsedData, null, 2));
+
+    const { isValid, validGoals, errors } = validateAndCleanGoals(goals);
+    console.log({ isValid, validGoals, errors });
+
+    if (!AnyDuplicate(goals, createEmptyGoal)) {
+      submit({ goals: JSON.stringify(parsedData), shopId }, { method: "POST" });
+      setSavedGoals(parsedData);
+      setGoals(parsedData);
+      setUnSavedChanges(false);
+      setSavedOrNot(true);
+      setPreventSaveBar(false);
+      shopify.toast.show("Saved data");
+      return null;
+    }
+    shopify.toast.show("No Duplicaes Are Allowed", {
+      isError: true,
+      duration: 1200,
+    });
   };
 
   // Discard: reset goals to last savedGoals on form reset
   const handleDiscard = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log("discarded");
     setGoals(savedGoals);
     setUnSavedChanges(false);
     setSavedOrNot(false);
-    alert("Changes discarded, reverted to last saved state.");
+    shopify.toast.show("Changes discarded, reverted to last saved state.");
   };
   return (
     <FormSaveBarStatusProvider
-      setSavedOrNot={setSavedOrNot}
       savedOrNot={savedOrNot}
+      setSavedOrNot={setSavedOrNot}
     >
       <s-page>
         <s-stack gap="large">
@@ -198,15 +228,26 @@ export default function GoalTab() {
             data-discard-confirmation
             onSubmit={handleSubmit}
             onReset={handleDiscard}
+            ref={formRef}
           >
             <input
               hidden
               ref={inputRef}
               name="update_save-bar"
               value={String(Boolean)}
+              onChange={() => {}}
             />
+            {preventSaveBar && (
+              <input
+                type="hidden"
+                aria-hidden
+                name="prevent_save-bar"
+                onChange={() => {}}
+                required
+              />
+            )}
             <s-page>
-              {goals.length > 0 ? (
+              {goals?.length > 0 ? (
                 goals.map((goal, index) => (
                   <AddGoalBlock
                     key={`goal-${index}`}
@@ -248,3 +289,56 @@ export default function GoalTab() {
     </FormSaveBarStatusProvider>
   );
 }
+
+type ValidationResult = {
+  isValid: boolean;
+  validGoals: GoalType[];
+  errors: Array<{ index: number; message: string }>;
+};
+
+function validateAndCleanGoals(goals: GoalType[]): ValidationResult {
+  const validGoals: GoalType[] = [];
+  const errors: Array<{ index: number; message: string }> = [];
+
+  return {
+    isValid: errors.length === 0,
+    validGoals,
+    errors,
+  };
+}
+
+const AnyDuplicate = (goals: GoalType[], NewGoal: GoalType): boolean => {
+  for (const goal of goals) {
+    // if (goal.title === NewGoal.title) {
+    //   return true;
+    // }
+
+    switch (goal.condition) {
+      case "cart_value":
+        if (goal.price === NewGoal.price) {
+          return true;
+        }
+        break;
+      case "cart_quantity":
+        if (goal.cartQuantity === NewGoal.cartQuantity) {
+          return true;
+        }
+        break;
+      default:
+        // no condition match, continue checking other goals
+        break;
+    }
+
+    switch (goal.offer) {
+      case "order_discount":
+        if (goal.cartDiscount === NewGoal.cartDiscount) {
+          return true;
+        }
+        break;
+      default:
+        // no offer match, continue checking other goals
+        break;
+    }
+  }
+  return false; // no duplicates found
+};

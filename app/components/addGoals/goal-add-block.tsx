@@ -49,11 +49,29 @@ const AddGoalBlock = ({
       : goal.Products) ?? null,
   );
 
-  const selectedGifts =
+  const [selectedGifts, setSelectedGifts] = useState(
     (typeof goal.freeGifts === "string"
       ? JSON.parse(goal.freeGifts)
-      : goal.freeGifts) ?? null;
+      : goal.freeGifts) ?? null,
+  );
 
+  const [_, setAnyChanges] = useState(false);
+
+  const handleOnChange = () => {
+    setAnyChanges((prev) => !prev);
+    setSelectedProducts(
+      (typeof goal.Products === "string"
+        ? JSON.parse(goal.Products)
+        : goal.Products) ?? null,
+    );
+    setSelectedGifts(
+      (typeof goal.freeGifts === "string"
+        ? JSON.parse(goal.freeGifts)
+        : goal.freeGifts) ?? null,
+    );
+    console.log("handle on change");
+    onChange();
+  };
   return (
     <>
       <s-section accessibilityLabel="Goal Block">
@@ -69,6 +87,7 @@ const AddGoalBlock = ({
                 hidden
                 name={`goals[${idx}][isActive]`}
                 value={isActive ? "true" : "false"}
+                onChange={() => {}}
               />
               <s-switch
                 checked={isActive}
@@ -120,7 +139,7 @@ const AddGoalBlock = ({
                   selectedProductCondition={goal.productsCondition ?? "any"}
                   selectedQuantity={goal.cartQuantity ?? "2"}
                   price={goal.price ?? "100"}
-                  onChange={onChange}
+                  onChange={handleOnChange}
                 />
                 <s-divider />
                 <RewardBlocK

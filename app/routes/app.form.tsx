@@ -1,604 +1,273 @@
-// import { useState, useEffect, useRef } from "react";
+import FormComponent from "app/components/addGoals/formExampleComponent";
+import { ErrorContextProvider } from "app/context/goal-error-context";
+import { GoalType } from "app/types/goals";
+import { error } from "console";
+import React, { useEffect, useState } from "react";
 
-// import { authenticate } from "app/shopify.server";
-// import {
-//   ActionFunctionArgs,
-//   LoaderFunctionArgs,
-//   useLoaderData,
-//   useSubmit,
-// } from "react-router";
-// import FormExampleComponent from "app/components/addGoals/formExampleComponent";
-// import {
-//   GET_GOALS_METAFIELD_QUERY,
-//   CREATE_OR_UPDATE_METAFIELD,
-// } from "app/graphql/get-and-update-goals-metafield";
-// import { GoalType } from "app/types/goals";
-// import { ensureDiscountExists } from "app/utils/create-discount-function-existance";
-// import AddGoalBlock from "app/components/addGoals/goal-add-block";
-// import { FormSaveBarStatusProvider } from "app/context/form-save-bar-status";
+// Example goals as you provided
+const exampleGoals: GoalType[] = [
+  {
+    id: "goal-001",
+    isActive: "true",
+    title: "Spend & Save",
+    goalName: "Holiday Campaign",
+    headline: "Buy More, Save More!",
+    topBarHeadlineIcons: "🎁🔥",
+    topBarHeadlineSimple: "Special Offer Inside!",
+    confirmationMessage: "Discount applied at checkout!",
+    remainingTargetMessage: "You're just $10 away from a discount!",
+    discountAppliedMessage: "You've unlocked a 10% discount!",
+    compined: "false",
 
-// interface loaderResponse {
-//   shop: {
-//     id: string;
-//     name: string;
-//     url: string;
-//     currencyCode: string;
-//     goals: Record<string, unknown> | null;
-//     discountId: string | null;
-//   };
-//   app: {
-//     id: string;
-//     title: string;
-//     apiKey: string;
-//   };
-//   shopifyFunctions: {
-//     edges: Array<{
-//       node: {
-//         id: string;
-//         app: {
-//           id: string;
-//           title: string;
-//         };
-//       };
-//     }>;
-//   };
-// }
+    condition: "has_product",
+    productsCondition: "any",
+    products: [
+      {
+        id: "gid://shopify/Product/1234567890",
+        title: "Red T-Shirt",
+        vendor: "FashionBrand",
+        handle: "red-t-shirt",
+        variants: [],
+        images: [],
+      },
+      {
+        id: "gid://shopify/Product/0987654321",
+        title: "Blue Jeans",
+        vendor: "DenimCo",
+        handle: "blue-jeans",
+        variants: [],
+        images: [],
+      },
+    ],
 
-// const createEmptyGoal: GoalType = {
-//   title: "",
-//   goalName: "Spend More",
-//   isActive: "true",
-//   condition: "cart_value",
-//   price: "100",
-//   offer: "free_shipping",
-//   headline: "Buy YYY and get free gift",
-//   topBarHeadlineIcons: "Free gift",
-//   topBarHeadlineSimple: "Buy YYY to get free gift",
-//   confirmationMessage: "You got free gift",
-//   remainingTargetMessage: `%remaining% left`,
-//   discountAppliedMessage: "Free gift",
-//   compined: "true",
-// };
+    offer: "order_discount",
+    cartDiscount: "10",
+  },
 
-// export async function loader({ request }: LoaderFunctionArgs) {
-//   const { admin } = await authenticate.admin(request);
-//   const response = await admin.graphql(GET_GOALS_METAFIELD_QUERY);
-//   const data = (await response.json()).data as loaderResponse;
-//   const functionId = (() => {
-//     let id = "";
-//     data.shopifyFunctions.edges.forEach((edge) => {
-//       if (edge.node.app.id === data.app.id) {
-//         id = edge.node.id;
-//       }
-//     });
-//     return id;
-//   })();
-//   console.log(functionId);
-//   await ensureDiscountExists(
-//     admin,
-//     data.shop.discountId,
-//     data.shop.id,
-//     functionId,
-//   );
-//   return await { shopId: data.shop.id, goalsMetafield: data.shop.goals };
-// }
+  {
+    id: "goal-002",
+    isActive: "true",
+    title: "Free Shipping Goal",
+    goalName: "Summer Promo",
+    headline: "Free Shipping Awaits!",
+    topBarHeadlineIcons: "🚚💨",
+    topBarHeadlineSimple: "Free shipping goal active",
+    confirmationMessage: "You've got free shipping!",
+    remainingTargetMessage: "Add $15 more to get free shipping.",
+    discountAppliedMessage: "Shipping cost removed!",
+    compined: "false",
 
-// export async function action({ request }: ActionFunctionArgs) {
-//   const { admin } = await authenticate.admin(request);
-//   const formData = await request.formData();
-//   const response = await admin.graphql(CREATE_OR_UPDATE_METAFIELD, {
-//     variables: {
-//       ownerId: formData.get("shopId"),
-//       namespace: "zuper_threshold",
-//       key: "goals",
-//       type: "json",
-//       value: formData.get("goals"),
-//     },
-//   });
-//   console.log(response);
-//   // console.log(response.json());
+    condition: "cart_value",
+    price: "50.00",
 
-//   return null;
-// }
+    offer: "free_shipping",
+  },
 
-// const parseGoalsFromForm = (formData) => {
-//   const parsed = [];
+  {
+    id: "goal-003",
+    isActive: "false",
+    title: "Bulk Buy Bonus",
+    goalName: "Winter Sale",
+    headline: "Buy More Than 5!",
+    topBarHeadlineIcons: "❄️🛍️",
+    topBarHeadlineSimple: "Bulk purchase offer",
+    confirmationMessage: "Bulk discount applied!",
+    remainingTargetMessage: "Add 2 more items to get discount.",
+    discountAppliedMessage: "Discount applied for bulk purchase!",
+    compined: "true",
 
-//   for (const [key, value] of formData.entries()) {
-//     const match = key.match(/^goals\[(\d+)]\[(.+)]$/);
-//     if (!match) continue;
+    condition: "cart_quantity",
+    cartQuantity: "5",
 
-//     const index = Number(match[1]);
-//     const field = match[2];
+    offer: "free_gift",
+    freeGifts: [
+      {
+        id: "gid://shopify/Product/5555555555",
+        title: "Free Mug",
+        vendor: "PromoCo",
+        handle: "free-mug",
+        variants: [],
+        images: [],
+      },
+    ],
+  },
 
-//     if (!parsed[index]) parsed[index] = {};
-//     parsed[index][field] = value.toString();
-//   }
+  {
+    id: "goal-004",
+    isActive: "true",
+    title: "Exclusive Product Offer",
+    goalName: "Flash Sale",
+    headline: "Buy all select items!",
+    topBarHeadlineIcons: "⚡🔥",
+    topBarHeadlineSimple: "Limited time offer",
+    confirmationMessage: "Discount unlocked!",
+    remainingTargetMessage: "Add the last product to unlock offer!",
+    discountAppliedMessage: "You saved 15%!",
+    compined: "false",
 
-//   return parsed;
-// };
+    condition: "has_product",
+    productsCondition: "all",
+    products: [
+      {
+        id: "gid://shopify/Product/1111111111",
+        title: "Sneakers",
+        vendor: "Sporty",
+        handle: "sneakers",
+        variants: [],
+        images: [],
+      },
+      {
+        id: "gid://shopify/Product/2222222222",
+        title: "Socks",
+        vendor: "Comfort",
+        handle: "socks",
+        variants: [],
+        images: [],
+      },
+    ],
 
-// function DynamicForm() {
-//   const { shopId, goalsMetafield } = useLoaderData<typeof loader>();
-//   const submit = useSubmit();
+    offer: "order_discount",
+    cartDiscount: "15",
+  },
+];
+const FormCreation = () => {
+  const [savedGoals, setSavedGoals] = useState<GoalType[]>(exampleGoals);
+  const [goals, setGoals] = useState<GoalType[]>(exampleGoals);
+  const [isDirty, setIsDirty] = useState(false);
+  const [hasError, setHasError] = useState<{ id: string; error: boolean }[]>(
+    [],
+  );
 
-//   console.log("goals", goalsMetafield);
-//   console.log("id", shopId);
+  useEffect(() => {
+    setIsDirty(JSON.stringify(goals) !== JSON.stringify(savedGoals));
+  }, [goals, savedGoals]);
 
-//   // Last saved state of inputs
-//   const [savedInputs, setSavedInputs] = useState(
-//     JSON.parse(goalsMetafield?.value as string),
-//   );
-//   // Inputs used for rendering; changes live here
-//   const [inputs, setInputs] = useState(savedInputs);
-//   const [UnSavedChanges, setUnSavedChanges] = useState(false);
-
-//   const [savedOrNot, setSavedOrNot] = useState(false);
-
-//   const inputRef = useRef<HTMLInputElement>(null);
-
-//   useEffect(() => {
-//     if (UnSavedChanges) {
-//       triggerChange();
-//     }
-//   }, [inputs, UnSavedChanges]);
-
-//   const triggerChange = () => {
-//     console.log("Ref before dispatch:", inputRef.current);
-//     if (inputRef.current) {
-//       inputRef.current.value = JSON.stringify(Math.random());
-//       inputRef.current.dispatchEvent(new Event("input", { bubbles: true }));
-//     } else {
-//       console.log("Ref is null or detached.");
-//     }
-//   };
-
-//   // Add new empty input group
-//   const handleAdd = () => {
-//     setInputs((prev) => [...prev, createEmptyGoal]);
-//     console.log(inputRef.current);
-//     setUnSavedChanges(true);
-//   };
-
-//   // Remove input group by index
-//   const handleRemove = (index) => {
-//     console.log("Removing index:", index);
-//     setInputs((prev) => prev.filter((_, i) => i !== index));
-//     setUnSavedChanges(true);
-//   };
-
-//   // Save: update savedInputs and inputs state
-//   const handleSubmit = (event) => {
-//     event.preventDefault();
-//     const formData = new FormData(event.target);
-//     const parsedData = parseGoalsFromForm(formData);
-//     console.log(parsedData);
-//     submit({ goals: JSON.stringify(parsedData), shopId }, { method: "POST" });
-//     setSavedInputs(parsedData);
-//     setInputs(parsedData);
-//     setUnSavedChanges(false);
-//     setSavedOrNot(true);
-//     alert("Saved data:\n" + JSON.stringify(parsedData, null, 2));
-//   };
-
-//   // Discard: reset inputs to last savedInputs on form reset
-//   const handleDiscard = (event) => {
-//     event.preventDefault();
-//     setInputs(savedInputs);
-//     setUnSavedChanges(false);
-//     setSavedOrNot(false);
-//     alert("Changes discarded, reverted to last saved state.");
-//   };
-
-//   return (
-//     <FormSaveBarStatusProvider
-//       setSavedOrNot={setSavedOrNot}
-//       savedOrNot={savedOrNot}
-//     >
-//       <div style={{ margin: "auto" }}>
-//         <h3>Dynamic Input Form with Save/Discard</h3>
-//         <form
-//           onSubmit={handleSubmit}
-//           onReset={handleDiscard}
-//           onErrorCapture={(e) => console.log("error occurs")}
-//           data-save-bar
-//         >
-//           <input hidden name={`goals[id]`} ref={inputRef} />
-//           {inputs?.map((input, index) => (
-//             <div
-//               key={index}
-//               style={{
-//                 marginBottom: 15,
-//                 paddingBottom: 10,
-//                 borderBottom: "1px solid #ccc",
-//               }}
-//             >
-//               <AddGoalBlock
-//                 key={`goal-${index}`}
-//                 id={`goal-${index}`}
-//                 idx={index}
-//                 goal={input}
-//                 isActiveGoal={input.isActive === "true"}
-//                 onChange={() => setUnSavedChanges(true)}
-//                 onRemove={() => handleRemove(index)}
-//               />
-//               {inputs.length > 1 && (
-//                 <button
-//                   type="button"
-//                   onClick={() => handleRemove(index)}
-//                   style={{
-//                     marginLeft: 20,
-//                     backgroundColor: "#f44336",
-//                     color: "white",
-//                     border: "none",
-//                     padding: "4px 8px",
-//                     cursor: "pointer",
-//                   }}
-//                 >
-//                   Remove
-//                 </button>
-//               )}
-//             </div>
-//           ))}
-
-//           <button type="button" onClick={handleAdd} style={{ marginRight: 10 }}>
-//             Add New
-//           </button>
-//           <button type="submit" style={{ marginRight: 10 }}>
-//             Save All
-//           </button>
-//           <button type="reset">Discard Changes</button>
-//         </form>
-//       </div>
-//     </FormSaveBarStatusProvider>
-//   );
-// }
-
-// export default DynamicForm;
-
-// // export default function MyForm() {
-// //   const [savedData, setSavedData] = useState(initialData);
-// //   const [formData, setFormData] = useState(initialData);
-// //   const handleChange = (e) => {
-// //     const { name, value } = e.target;
-// //     setFormData((prev) => ({ ...prev, [name]: value }));
-// //   };
-
-// //   const handleSave = (e) => {
-// //     e.preventDefault();
-// //     setSavedData(formData);
-// //     console.log("Saved!");
-// //   };
-
-// //   // Called on form reset event
-// //   const handleDiscard = (e) => {
-// //     e.preventDefault();
-// //     setFormData(savedData); // Revert form data to last saved state
-// //     console.log("Changes discarded!");
-// //   };
-
-// //   return (
-// //     <form data-save-bar onReset={handleDiscard} onSubmit={handleSave}>
-// //       {<input name="name" value={formData.name} onChange={handleChange} />
-// //       <input name="email" value={formData.email} onChange={handleChange} />}
-// //       <button type="submit" onClick={handleSave}>
-// //         Save
-// //       </button>
-// //       <button type="reset">Discard</button>
-// //     </form>
-// //   );
-// // }
-
-// ===
-// Settings page pattern
-// ===
-
-// export default function SettingsPage() {
-//   const handleFormReset = (event) => {
-//     console.log("Handle discarded changes if necessary");
-//   };
-
-//   const handleFormSubmit = (event) => {
-//     event.preventDefault();
-//     const formData = new FormData(event.target);
-//     const formEntries = Object.fromEntries(formData);
-//     console.log("Form data", formEntries);
-//   };
-
-//   return (
-//     <form data-save-bar onSubmit={handleFormSubmit} onReset={handleFormReset}>
-//       <s-page heading="Settings" inlineSize="small">
-//         {/* === */}
-//         {/* Store Information */}
-//         {/* === */}
-//         <s-section heading="Store Information">
-//           <s-number-field
-//             label="number"
-//             name="number"
-//             value="1"
-//             placeholder="Enter number"
-//             required
-//             min={1}
-//             max={10}
-//             error="Please apply correct"
-//           />
-//           <s-text-field
-//             label="Store name"
-//             name="store-name"
-//             value="Puzzlify Store"
-//             placeholder="Enter store name"
-//             required
-//             minLength={1}
-//             maxLength={10}
-//             error="Please apply correct"
-//           />
-//           <s-text-field
-//             label="Business address"
-//             name="business-address"
-//             value="123 Main St, Anytown, USA"
-//             placeholder="Enter business address"
-//           />
-//           <s-text-field
-//             label="Store phone"
-//             name="store-phone"
-//             value="+1 (555) 123-4567"
-//             placeholder="Enter phone number"
-//           />
-//           <s-choice-list label="Primary currency" name="currency">
-//             <s-choice value="usd" selected>
-//               US Dollar ($)
-//             </s-choice>
-//             <s-choice value="cad">Canadian Dollar (CAD)</s-choice>
-//             <s-choice value="eur">Euro (€)</s-choice>
-//           </s-choice-list>
-//         </s-section>
-
-//         {/* === */}
-//         {/* Notifications */}
-//         {/* === */}
-//         <s-section heading="Notifications">
-//           <s-select
-//             label="Notification frequency"
-//             name="notification-frequency"
-//           >
-//             <s-option value="immediately" selected>
-//               Immediately
-//             </s-option>
-//             <s-option value="hourly">Hourly digest</s-option>
-//             <s-option value="daily">Daily digest</s-option>
-//           </s-select>
-//           <s-choice-list
-//             label="Notification types"
-//             name="notifications-type"
-//             multiple
-//           >
-//             <s-choice value="new-order" selected>
-//               New order notifications
-//             </s-choice>
-//             <s-choice value="low-stock">Low stock alerts</s-choice>
-//             <s-choice value="customer-review">
-//               Customer review notifications
-//             </s-choice>
-//             <s-choice value="shipping-updates">Shipping updates</s-choice>
-//           </s-choice-list>
-//         </s-section>
-
-//         {/* === */}
-//         {/* Preferences */}
-//         {/* === */}
-//         <s-section heading="Preferences">
-//           <s-box border="base" borderRadius="base">
-//             <s-clickable
-//               padding="small-100"
-//               href="/app/settings/shipping"
-//               accessibilityLabel="Configure shipping methods, rates, and fulfillment options"
-//             >
-//               <s-grid
-//                 gridTemplateColumns="1fr auto"
-//                 alignItems="center"
-//                 gap="base"
-//               >
-//                 <s-box>
-//                   <s-heading>Shipping & fulfillment</s-heading>
-//                   <s-paragraph color="subdued">
-//                     Shipping methods, rates, zones, and fulfillment preferences.
-//                   </s-paragraph>
-//                 </s-box>
-//                 <s-icon type="chevron-right" />
-//               </s-grid>
-//             </s-clickable>
-//             <s-box paddingInline="small-100">
-//               <s-divider />
-//             </s-box>
-
-//             <s-clickable
-//               padding="small-100"
-//               href="/app/settings/products_catalog"
-//               accessibilityLabel="Configure product defaults, customer experience, and catalog settings"
-//             >
-//               <s-grid
-//                 gridTemplateColumns="1fr auto"
-//                 alignItems="center"
-//                 gap="base"
-//               >
-//                 <s-box>
-//                   <s-heading>Products & catalog</s-heading>
-//                   <s-paragraph color="subdued">
-//                     Product defaults, customer experience, and catalog display
-//                     options.
-//                   </s-paragraph>
-//                 </s-box>
-//                 <s-icon type="chevron-right" />
-//               </s-grid>
-//             </s-clickable>
-//             <s-box paddingInline="small-100">
-//               <s-divider />
-//             </s-box>
-
-//             <s-clickable
-//               padding="small-100"
-//               href="/app/settings/customer_support"
-//               accessibilityLabel="Manage customer support settings and help resources"
-//             >
-//               <s-grid
-//                 gridTemplateColumns="1fr auto"
-//                 alignItems="center"
-//                 gap="base"
-//               >
-//                 <s-box>
-//                   <s-heading>Customer support</s-heading>
-//                   <s-paragraph color="subdued">
-//                     Support settings, help resources, and customer service
-//                     tools.
-//                   </s-paragraph>
-//                 </s-box>
-//                 <s-icon type="chevron-right" />
-//               </s-grid>
-//             </s-clickable>
-//           </s-box>
-//         </s-section>
-
-//         {/* === */}
-//         {/* Tools */}
-//         {/* === */}
-//         <s-section heading="Tools">
-//           <s-stack
-//             gap="none"
-//             border="base"
-//             borderRadius="base"
-//             overflow="hidden"
-//           >
-//             <s-box padding="small-100">
-//               <s-grid
-//                 gridTemplateColumns="1fr auto"
-//                 alignItems="center"
-//                 gap="base"
-//               >
-//                 <s-box>
-//                   <s-heading>Reset app settings</s-heading>
-//                   <s-paragraph color="subdued">
-//                     Reset all settings to their default values. This action
-//                     cannot be undone.
-//                   </s-paragraph>
-//                 </s-box>
-//                 <s-button tone="critical">Reset</s-button>
-//               </s-grid>
-//             </s-box>
-//             <s-box paddingInline="small-100">
-//               <s-divider />
-//             </s-box>
-
-//             <s-box padding="small-100">
-//               <s-grid
-//                 gridTemplateColumns="1fr auto"
-//                 alignItems="center"
-//                 gap="base"
-//               >
-//                 <s-box>
-//                   <s-heading>Export settings</s-heading>
-//                   <s-paragraph color="subdued">
-//                     Download a backup of all your current settings.
-//                   </s-paragraph>
-//                 </s-box>
-//                 <s-button>Export</s-button>
-//               </s-grid>
-//             </s-box>
-//           </s-stack>
-//         </s-section>
-//       </s-page>
-//     </form>
-//   );
-// }
-
-import { useState } from "react";
-
-export default function SettingsPage() {
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-
-  // Simple validation: require store name and business address
-  const validate = (formEntries) => {
-    const newErrors = {};
-    if (!formEntries["store-name"]) {
-      newErrors["store-name"] = "Store name is required";
+  useEffect(() => {
+    if (isDirty) {
+      shopify.saveBar.show("my-save-bar");
+    } else {
+      shopify.saveBar.hide("my-save-bar");
     }
-    if (!formEntries["business-address"]) {
-      newErrors["business-address"] = "Business address is required";
-    }
-    return newErrors;
+  }, [isDirty]);
+
+  // Handle field changes
+  const updateGoalField = (goal: GoalType) => {
+    setGoals((prev) => prev.map((g) => (g.id === goal.id ? goal : g)));
   };
 
-  const handleFormSubmit = async (event) => {
-    event.preventDefault();
-    console.log(event);
-    const formData = new FormData(event.target);
-    const formEntries = Object.fromEntries(formData);
-    const validationErrors = validate(formEntries);
-    setErrors(validationErrors);
+  // Add a new blank goal
+  const addGoal = () => {
+    const newGoal: GoalType = {
+      id: `goal_${Date.now()}`,
+      isActive: true,
+      title: "",
+      headline: "%remaining% more for %discount% off",
+      topBarHeadlineIcons: "%discount% discount",
+      topBarHeadlineSimple: "Spend %remaining% more to get %discount% off",
+      confirmationMessage: "You got %discount% off",
+      remainingTargetMessage: "%remaining% away",
+      discountAppliedMessage: "%discount% off",
+      compined: false,
+      condition: "cart_value",
+      price: "0",
+      offer: "free_shipping",
+    };
+    setGoals((prev) => [...prev, newGoal]);
+  };
 
-    if (Object.keys(validationErrors).length > 0) {
-      // Prevent submit, show errors, keep save bar visible
-      return;
+  const handleRemove = (id: string) => {
+    setGoals((prev) => prev.filter((goal) => goal.id !== id));
+  };
+
+  const handleSave = () => {
+    console.log(goals);
+    const isSafe =
+      hasError.length === 0
+        ? true
+        : hasError.some((error) => error.error === true);
+    if (!isSafe) {
+      setSavedGoals(goals);
+      setIsDirty(false);
     }
+    console.log("error", hasError);
+  };
 
-    setSubmitting(true);
-    // Optionally, show a success message or reset the form
+  const handleDiscard = () => {
+    console.log(hasError);
+    setHasError([]);
+    setGoals(savedGoals);
+    setIsDirty(false);
   };
 
   return (
     <>
-      <form data-save-bar onSubmit={handleFormSubmit} id="form-save">
-        <div>
-          <label>
-            Store name
-            <input name="store-name" defaultValue="Puzzlify Store" required />
-            <input name="jdnd-name" hidden required />
-          </label>
-          {errors["store-name"] && (
-            <div style={{ color: "red" }}>{errors["store-name"]}</div>
+      <s-page>
+        <s-stack gap="large">
+          <s-box paddingInlineStart="small" paddingBlockStart="large">
+            <s-stack alignItems="center" gap="large" direction="inline">
+              <s-button
+                variant="tertiary"
+                type="button"
+                icon="arrow-left"
+                accessibilityLabel="back"
+                href="/app"
+              />
+              <h2>Goal Configuration</h2>
+            </s-stack>
+          </s-box>
+          {goals?.length > 0 ? (
+            goals.map((goal) => (
+              <React.Fragment key={goal.id}>
+                <FormComponent
+                  goal={goal}
+                  onChange={updateGoalField}
+                  onRemove={handleRemove}
+                  AllGoals={goals}
+                  announceError={(id: string, error: boolean) => {
+                    setHasError((prev) => {
+                      const updated = prev.filter((entry) => entry.id !== id);
+                      return [...updated, { id, error }];
+                    });
+                  }}
+                />
+              </React.Fragment>
+            ))
+          ) : (
+            <s-banner heading="No Goals" tone="info">
+              No Goals Were Created
+            </s-banner>
           )}
-        </div>
-        <div>
-          <label>
-            Business address
-            <input
-              name="business-address"
-              defaultValue="123 Main St, Anytown, USA"
-              required
-            />
-            <s-text-field name="hjngngn" defaultValue="kjnji n vngn" required />
-          </label>
-          {errors["business-address"] && (
-            <div style={{ color: "red" }}>{errors["business-address"]}</div>
-          )}
-        </div>
-        <button type="submit" disabled={submitting} slot="primary">
-          Save
-        </button>
-      </form>
-      <s-button onClick={() => setSubmitting(false)}>false</s-button>
-      <s-button onClick={() => setSubmitting(true)}>true</s-button>
-      <form data-save-bar>
-        <s-text-field
-          label="Product Title"
-          name="title"
-          required
-        ></s-text-field>
 
-        <s-text-area
-          label="Description"
-          name="description"
-          rows="4"
-        ></s-text-area>
+          <s-stack
+            direction="inline"
+            gap="base"
+            padding="base"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <s-button type="button" variant="primary" onClick={addGoal}>
+              Add New Goal
+            </s-button>
 
-        <s-text-field
-          label="Price"
-          name="price"
-          type="number"
-          step="0.01"
-          min="0"
-        ></s-text-field>
-      </form>
+            {isDirty && (
+              <s-button type="submit" variant="primary" onClick={handleSave}>
+                Save
+              </s-button>
+            )}
+          </s-stack>
+        </s-stack>
+      </s-page>
+
+      <div id="portals">
+        <ui-save-bar id="my-save-bar">
+          <button onClick={handleDiscard}>Discard</button>
+          <button variant="primary" onClick={handleSave}>
+            Save
+          </button>
+        </ui-save-bar>
+      </div>
     </>
   );
-}
+};
+
+export default FormCreation;

@@ -1,18 +1,16 @@
-import { useState } from "react";
-
+import { GoalType } from "app/types/goals";
 
 interface OtherOptionsBlockType {
   isActive: boolean;
-  idx: number;
   isCombined: boolean;
+  onChange: (field: keyof GoalType, value: unknown) => void;
 }
 
 const OtherOptionsBlock = ({
   isActive,
-  idx,
   isCombined,
+  onChange,
 }: OtherOptionsBlockType) => {
-  const [selected, setSelected] = useState(isCombined);
   return (
     <>
       <s-section padding="base">
@@ -34,17 +32,11 @@ const OtherOptionsBlock = ({
                 <s-option value="3">icoon 3</s-option>
               </s-select> */}
               <s-text>Combine this goal with your other goals</s-text>
-              <input
-                hidden
-                name={`goals[${idx}][compined]`}
-                value={JSON.stringify(selected)}
-                onChange={() => {}}
-              />
               <s-checkbox
                 label="compine"
                 accessibilityLabel="Compine"
-                checked={selected}
-                onChange={(e) => setSelected(e.currentTarget.checked)}
+                checked={isCombined}
+                onChange={(e) => onChange("compined", e.currentTarget.value)}
                 disabled={!isActive}
                 defaultChecked={isCombined}
               ></s-checkbox>
@@ -55,6 +47,5 @@ const OtherOptionsBlock = ({
     </>
   );
 };
-
 
 export default OtherOptionsBlock;
