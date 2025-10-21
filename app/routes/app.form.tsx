@@ -5,8 +5,8 @@ import { error } from "console";
 import React, { useEffect, useState } from "react";
 
 const FormCreation = () => {
-  const [savedGoals, setSavedGoals] = useState<GoalType[]>(exampleGoals);
-  const [goals, setGoals] = useState<GoalType[]>(exampleGoals);
+  const [savedGoals, setSavedGoals] = useState<GoalType[]>([]);
+  const [goals, setGoals] = useState<GoalType[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [hasError, setHasError] = useState<{ id: string; error: boolean }[]>(
     [],

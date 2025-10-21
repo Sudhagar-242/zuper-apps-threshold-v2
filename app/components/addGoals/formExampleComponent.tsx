@@ -311,11 +311,9 @@ import ConditionBlock from "./add-goals-components/condition-block";
 import RewardBlocK from "./add-goals-components/rewards-block";
 import GoalTextBlock from "./add-goals-components/goal-text-block";
 import { useState, useEffect } from "react";
-import {
-  AddConditionBlockChoices,
-  AddRewardBlockChoices,
-} from "app/enums/addBlock";
 import OtherOptionsBlock from "./add-goals-components/other-options-block";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
+import { AddConditionBlockChoices } from "app/enums/addBlock";
 
 interface Props {
   goal: GoalType;
@@ -323,6 +321,8 @@ interface Props {
   onRemove: (id: string) => void;
   AllGoals: GoalType[];
   announceError: (id: string, error: boolean) => void;
+  duplicateProducts: Product[];
+  setDuplicateProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
 interface ValidationResult {
@@ -344,12 +344,16 @@ const FormComponent = ({
   onRemove,
   AllGoals,
   announceError,
+  duplicateProducts,
+  setDuplicateProducts,
 }: Props) => {
   const [goal, setGoal] = useState<GoalType>(selectedGoal);
   const [isExpanded, setIsExpanded] = useState(true);
   const [validationErrors, setValidationErrors] = useState<
     ValidationResult["errors"]
   >({} as ValidationResult["errors"]);
+
+  console.log("Duplicate Products", duplicateProducts);
 
   const handleValidateError = () => {
     const { hasError, errors } = validateGoal(goal, AllGoals);
@@ -375,6 +379,7 @@ const FormComponent = ({
       return idsA.every((id, idx) => id === idsB[idx]);
     };
 
+    // 🔍 Check for identical duplicate goals
     const isExactDuplicate = allGoals.some((g) => {
       if (g.id === currentId) return false;
 
@@ -391,15 +396,12 @@ const FormComponent = ({
       );
 
       switch (goal.condition) {
-        case AddConditionBlockChoices.CART_VALUE:
+        case "cart_value":
           return sameCondition && samePrice && sameOffer && sameDiscount;
-
-        case AddConditionBlockChoices.CART_QUANTITY:
+        case "cart_quantity":
           return sameCondition && sameQuantity && sameOffer && sameDiscount;
-
-        case AddConditionBlockChoices.CART_HAS_PRODUCTS:
+        case "has_product":
           return sameCondition && sameProducts && sameOffer && sameDiscount;
-
         default:
           return false;
       }
@@ -412,6 +414,7 @@ const FormComponent = ({
       hasError = true;
     }
 
+    // 🧾 Check string fields
     const stringFieldsToCheck = [
       "headline",
       "topBarHeadlineIcons",
@@ -428,17 +431,54 @@ const FormComponent = ({
       }
     });
 
+    // 🧩 Condition-specific checks
     switch (goal.condition) {
-      case AddConditionBlockChoices.CART_VALUE: {
+      case "cart_value": {
         const currentPrice = Number(goal.price ?? 0);
 
+        // Check if price is empty (""), null or undefined
+        if (
+          goal.price === "" ||
+          goal.price === null ||
+          typeof goal.price === "undefined"
+        ) {
+          errors.price = "Price must not be empty.";
+          hasError = true;
+          break;
+        }
+
+        // Uniqueness check, excluding current goal by reference
         const isDuplicate = allGoals.some(
-          (g) => g.id !== goal.id && Number(g.price) === currentPrice,
+          (g) => g !== goal && Number(g.price) === currentPrice,
         );
+
+        // Price must be positive
         if (!currentPrice || currentPrice <= 0) {
           errors.price = "Price must be greater than 0.";
           hasError = true;
         }
+
+        // Find index of current goal
+        const idx = allGoals.indexOf(goal);
+        // Find previous goal with a defined price
+        let prevIdx = idx - 1;
+        while (prevIdx >= 0 && typeof allGoals[prevIdx].price === "undefined") {
+          prevIdx--;
+        }
+
+        // Compare previous price if both are defined
+        if (
+          idx > 0 &&
+          prevIdx >= 0 &&
+          typeof allGoals[prevIdx].price !== "undefined" &&
+          typeof goal.price !== "undefined" &&
+          Number(allGoals[prevIdx].price) > currentPrice
+        ) {
+          errors.price = "Price must be greater than Previous";
+          hasError = true;
+        }
+
+        // Enforce price uniqueness
         if (isDuplicate) {
           errors.price = "Price must be unique across all goals.";
           hasError = true;
@@ -446,17 +486,50 @@ const FormComponent = ({
         break;
       }
 
-      case AddConditionBlockChoices.CART_HAS_PRODUCTS: {
+      case "has_product": {
         if (!goal.products || goal.products?.length === 0) {
           errors.products = "Select at least 1 product";
           hasError = true;
+        } else {
+          const duplicateProducts = goal.products.filter((p) =>
+            allGoals.some(
+              (g) =>
+                g.id !== goal.id &&
+                Array.isArray(g.products) &&
+                g.products.some((gp) => gp.id === p.id),
+            ),
+          );
+
+          if (duplicateProducts.length > 0) {
+            //error checking to manually removes the product
+            //             const duplicateTitles = duplicateProducts
+            // .map((p) => `"${p.title}"`)
+            // .join(", ");
+            // errors.products = `Product(s) ${duplicateTitles} already used in another goal.`;
+            // hasError = true;
+
+            // ✅ Optional: store duplicates in state (if you have setDuplicateProducts)
+            setDuplicateProducts(duplicateProducts);
+          }
         }
         break;
       }
 
-      case AddConditionBlockChoices.CART_QUANTITY: {
-        if (Number(goal.cartQuantity) < 0) {
+      case "cart_quantity": {
+        const hasDuplicate = allGoals.some(
+          (g) =>
+            g.id !== goal.id &&
+            g.condition === AddConditionBlockChoices.CART_QUANTITY &&
+            g.offer === goal.offer &&
+            g.cartQuantity === goal.cartQuantity,
+        );
+
+        if (Number(goal.cartQuantity) <= 0) {
           errors.quantity = "Quantity must be greater than 0";
+          hasError = true;
+        }
+        if (hasDuplicate) {
+          errors.quantity = `A goal with quantity ${goal.cartQuantity} and offer type "${goal.offer}" already exists.`;
           hasError = true;
         }
         break;
@@ -467,24 +540,37 @@ const FormComponent = ({
     }
 
     switch (goal.offer) {
-      case AddRewardBlockChoices.FREE_SHIPPING: {
+      case "free_shipping":
         break;
-      }
 
-      case AddRewardBlockChoices.ORDER_DISCOUNT: {
-        if (
-          goal.cartDiscount &&
-          goal.cartDiscount.length === 0 &&
-          Number(goal.cartDiscount) < 0 &&
-          Number(goal.cartDiscount) > 100
-        ) {
-          errors.discount = "Enter Correct Discount Percentage";
+      case "order_discount": {
+        const currentDiscount = Number(goal.cartDiscount ?? 0);
+
+        if (!currentDiscount || currentDiscount <= 0 || currentDiscount > 100) {
+          errors.cartDiscount = "Discount must be between 1 and 100.";
           hasError = true;
         }
+
+        // ✅ Check that this order discount is greater than all previous order discounts
+        const currentIndex = allGoals.findIndex((g) => g.id === goal.id);
+        const previousOrderDiscounts = allGoals
+          .slice(0, currentIndex)
+          .filter((g) => g.offer === "order_discount");
+
+        for (const prevGoal of previousOrderDiscounts) {
+          const prevDiscount = Number(prevGoal.cartDiscount ?? 0);
+
+          if (currentDiscount <= prevDiscount) {
+            errors.cartDiscount = `This discount (${currentDiscount}%) must be greater than the previous discount (${prevDiscount}%).`;
+            hasError = true;
+            break;
+          }
+        }
+
         break;
       }
 
-      case AddRewardBlockChoices.FREE_GIFT: {
+      case "free_gift": {
         if (!goal.freeGifts || goal.freeGifts?.length === 0) {
           errors.gifts = "Select at least 1 gift";
           hasError = true;
@@ -496,49 +582,189 @@ const FormComponent = ({
         break;
     }
 
-    // if (goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT) {
-    //   const currentPrice = Number(goal.price ?? 0);
-    //   const currentDiscount = Number(goal.cartDiscount ?? 0);
-
-    //   if (!currentPrice || currentPrice <= 0) {
-    //     errors.price = "Price must be greater than 0.";
-    //     hasError = true;
-    //   }
-
-    //   if (!currentDiscount || currentDiscount <= 0) {
-    //     errors.cartDiscount = "Discount must be greater than 0.";
-    //     hasError = true;
-    //   }
-
-    //   // Only check discounts of previous goals in the list
-    //   const currentIndex = allGoals.findIndex((g) => g.id === goal.id);
-
-    //   const previousGoals = allGoals.slice(0, currentIndex).filter((g) => {
-    //     return (
-    //       g.offer === AddRewardBlockChoices.ORDER_DISCOUNT &&
-    //       Number(g.price) < currentPrice
-    //     );
-    //   });
-
-    //   for (const prevGoal of previousGoals) {
-    //     const prevDiscount = Number(prevGoal.cartDiscount ?? 0);
-
-    //     if (currentDiscount <= prevDiscount) {
-    //       errors.cartDiscount = `Discount (${currentDiscount}%) must be greater than previous discount (${prevDiscount}%) for lower price tier ($${prevGoal.price}).`;
-    //       hasError = true;
-    //       break;
-    //     }
-    //   }
-    // }
-
     return { hasError, errors };
   };
+
+  // const validateGoal = (
+  //   goal: GoalType,
+  //   allGoals: GoalType[],
+  // ): ValidationResult => {
+  //   const errors: ValidationResult["errors"] = {} as ValidationResult["errors"];
+  //   let hasError = false;
+
+  //   const currentId = goal.id;
+
+  //   const isSameProductSet = (a: any[], b: any[]) => {
+  //     if (a?.length !== b?.length) return false;
+  //     const idsA = a.map((p) => p.id).sort();
+  //     const idsB = b.map((p) => p.id).sort();
+  //     return idsA.every((id, idx) => id === idsB[idx]);
+  //   };
+
+  //   const isExactDuplicate = allGoals.some((g) => {
+  //     if (g.id === currentId) return false;
+
+  //     const sameCondition = g.condition === goal.condition;
+  //     const sameOffer = g.offer === goal.offer;
+  //     const samePrice = Number(g.price ?? 0) === Number(goal.price ?? 0);
+  //     const sameQuantity =
+  //       Number(g.cartQuantity ?? 0) === Number(goal.cartQuantity ?? 0);
+  //     const sameDiscount =
+  //       Number(g.cartDiscount ?? 0) === Number(goal.cartDiscount ?? 0);
+  //     const sameProducts = isSameProductSet(
+  //       g.products ?? [],
+  //       goal.products ?? [],
+  //     );
+
+  //     switch (goal.condition) {
+  //       case AddConditionBlockChoices.CART_VALUE:
+  //         return sameCondition && samePrice && sameOffer && sameDiscount;
+
+  //       case AddConditionBlockChoices.CART_QUANTITY:
+  //         return sameCondition && sameQuantity && sameOffer && sameDiscount;
+
+  //       case AddConditionBlockChoices.CART_HAS_PRODUCTS:
+  //         return sameCondition && sameProducts && sameOffer && sameDiscount;
+
+  //       default:
+  //         return false;
+  //     }
+  //   });
+
+  //   if (isExactDuplicate) {
+  //     errors.general =
+  //       "A goal with the same condition and reward already exists.";
+  //     shopify.toast.show(errors.general, { duration: 1000, isError: true });
+  //     hasError = true;
+  //   }
+
+  //   const stringFieldsToCheck = [
+  //     "headline",
+  //     "topBarHeadlineIcons",
+  //     "topBarHeadlineSimple",
+  //     "confirmationMessage",
+  //     "remainingTargetMessage",
+  //     "discountAppliedMessage",
+  //   ] as const;
+
+  //   stringFieldsToCheck.forEach((field) => {
+  //     if (!goal[field] || goal[field].trim() === "") {
+  //       errors[field] = `${field} cannot be empty.`;
+  //       hasError = true;
+  //     }
+  //   });
+
+  //   switch (goal.condition) {
+  //     case AddConditionBlockChoices.CART_VALUE: {
+  //       const currentPrice = Number(goal.price ?? 0);
+
+  //       const isDuplicate = allGoals.some(
+  //         (g) => g.id !== goal.id && Number(g.price) === currentPrice,
+  //       );
+  //       if (!currentPrice || currentPrice <= 0) {
+  //         errors.price = "Price must be greater than 0.";
+  //         hasError = true;
+  //       }
+  //       if (isDuplicate) {
+  //         errors.price = "Price must be unique across all goals.";
+  //         hasError = true;
+  //       }
+  //       break;
+  //     }
+
+  //     case AddConditionBlockChoices.CART_HAS_PRODUCTS: {
+  //       if (!goal.products || goal.products?.length === 0) {
+  //         errors.products = "Select at least 1 product";
+  //         hasError = true;
+  //       }
+  //       break;
+  //     }
+
+  //     case AddConditionBlockChoices.CART_QUANTITY: {
+  //       if (Number(goal.cartQuantity) < 0) {
+  //         errors.quantity = "Quantity must be greater than 0";
+  //         hasError = true;
+  //       }
+  //       break;
+  //     }
+
+  //     default:
+  //       break;
+  //   }
+
+  //   switch (goal.offer) {
+  //     case AddRewardBlockChoices.FREE_SHIPPING: {
+  //       break;
+  //     }
+
+  //     case AddRewardBlockChoices.ORDER_DISCOUNT: {
+  //       if (
+  //         goal.cartDiscount &&
+  //         goal.cartDiscount.length === 0 &&
+  //         Number(goal.cartDiscount) < 0 &&
+  //         Number(goal.cartDiscount) > 100
+  //       ) {
+  //         errors.discount = "Enter Correct Discount Percentage";
+  //         hasError = true;
+  //       }
+  //       break;
+  //     }
+
+  //     case AddRewardBlockChoices.FREE_GIFT: {
+  //       if (!goal.freeGifts || goal.freeGifts?.length === 0) {
+  //         errors.gifts = "Select at least 1 gift";
+  //         hasError = true;
+  //       }
+  //       break;
+  //     }
+
+  //     default:
+  //       break;
+  //   }
+
+  //   // if (goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT) {
+  //   //   const currentPrice = Number(goal.price ?? 0);
+  //   //   const currentDiscount = Number(goal.cartDiscount ?? 0);
+
+  //   //   if (!currentPrice || currentPrice <= 0) {
+  //   //     errors.price = "Price must be greater than 0.";
+  //   //     hasError = true;
+  //   //   }
+
+  //   //   if (!currentDiscount || currentDiscount <= 0) {
+  //   //     errors.cartDiscount = "Discount must be greater than 0.";
+  //   //     hasError = true;
+  //   //   }
+
+  //   //   // Only check discounts of previous goals in the list
+  //   //   const currentIndex = allGoals.findIndex((g) => g.id === goal.id);
+
+  //   //   const previousGoals = allGoals.slice(0, currentIndex).filter((g) => {
+  //   //     return (
+  //   //       g.offer === AddRewardBlockChoices.ORDER_DISCOUNT &&
+  //   //       Number(g.price) < currentPrice
+  //   //     );
+  //   //   });
+
+  //   //   for (const prevGoal of previousGoals) {
+  //   //     const prevDiscount = Number(prevGoal.cartDiscount ?? 0);
+
+  //   //     if (currentDiscount <= prevDiscount) {
+  //   //       errors.cartDiscount = `Discount (${currentDiscount}%) must be greater than previous discount (${prevDiscount}%) for lower price tier ($${prevGoal.price}).`;
+  //   //       hasError = true;
+  //   //       break;
+  //   //     }
+  //   //   }
+  //   // }
+
+  //   return { hasError, errors };
+  // };
 
   // If parent passes a new goal prop, sync local state
   useEffect(() => {
     handleValidateError();
     setGoal(selectedGoal);
-  }, [selectedGoal]);
+  }, [selectedGoal, duplicateProducts]);
 
   const handleInputChange = (field: keyof GoalType, value: unknown) => {
     const updatedGoal = { ...goal, [field]: value };
@@ -610,10 +836,11 @@ const FormComponent = ({
                 isActive={goal.isActive}
                 errors={{
                   price: validationErrors.price,
-                  quantity: undefined,
+                  quantity: validationErrors.quantity,
                   products: validationErrors.products,
                 }}
                 onChange={handleInputChange}
+                alredyExistedProducts={duplicateProducts}
               />
 
               <s-divider />

@@ -16,6 +16,7 @@ import FormComponent from "app/components/addGoals/formExampleComponent";
 import { GoalType } from "app/types/goals";
 import { ShopProvider } from "app/context/shop-provider-ctx";
 import { AddRewardBlockChoices } from "app/enums/addBlock";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 export interface loaderResponse {
   shop: {
@@ -86,6 +87,8 @@ const FormCreation = () => {
   const Shop = useLoaderData<typeof loader>();
   const submit = useSubmit();
 
+  const [duplicateProducts, setDuplicateProducts] = useState<Product[]>([]);
+
   // const [savedGoals, setSavedGoals] = useState<GoalType[]>([]);
   // const [goals, setGoals] = useState<GoalType[]>([]);
 
@@ -140,8 +143,7 @@ const FormCreation = () => {
       compined: true,
       condition: "cart_value",
       price: "0",
-      offer: AddRewardBlockChoices.FREE_SHIPPING
-      ,
+      offer: AddRewardBlockChoices.FREE_SHIPPING,
     };
     setGoals((prev) => [...prev, newGoal]);
   };
@@ -166,6 +168,7 @@ const FormCreation = () => {
 
       setSavedGoals(goals);
       setIsDirty(false);
+      shopify.toast.show("Goal Saved", { duration: 1000 });
     }
     console.log("error", hasError);
   };
@@ -211,6 +214,8 @@ const FormCreation = () => {
                         return [...updated, { id, error }];
                       });
                     }}
+                    duplicateProducts={duplicateProducts}
+                    setDuplicateProducts={setDuplicateProducts}
                   />
                 </React.Fragment>
               ))

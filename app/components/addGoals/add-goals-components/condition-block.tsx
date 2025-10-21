@@ -5,6 +5,7 @@ import { CallbackEvent } from "@shopify/polaris-types";
 import { GoalType } from "app/types/goals";
 import { useShop } from "app/context/shop-provider-ctx";
 import { loaderResponse } from "app/routes/app.configuration-add-goals";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 interface ConditionBlockProps {
   goal: GoalType;
@@ -15,6 +16,7 @@ interface ConditionBlockProps {
     products?: string;
   };
   onChange: (field: keyof GoalType, value: unknown) => void;
+  alredyExistedProducts: Partial<Product>[];
 }
 
 const choiceLabels = [
@@ -37,6 +39,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
   isActive,
   errors,
   onChange,
+  alredyExistedProducts,
 }) => {
   const [isErrors, setIsErrors] = useState<typeof errors>(errors);
 
@@ -76,26 +79,16 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
         ? JSON.parse(goal.products)
         : (goal.products ?? []);
 
-    const exclusionQuery = selectedProducts
-      .map((product) => `-id:${product.id}`)
-      .join(" ");
-
-    const filterQuery = `status:active ${exclusionQuery}`;
-
-    console.log(exclusionQuery);
-
     if (!isActive) return;
     // Assuming `shopify.resourcePicker` is globally available or imported
     const selected = await window.shopify?.resourcePicker({
       type: "product",
       multiple: true,
+      selectionIds: selectedProducts,
       filter: {
-        query: filterQuery,
+        query:
+          "-id:10033057825047 AND -id:10033058316567 AND -id:10033058349335",
       },
-      // selectionIds:
-      //   typeof goal.products === "string"
-      //     ? JSON.parse(goal?.products)
-      //     : goal.products,
     });
     if (selected) {
       onChange("products", selected);
@@ -219,7 +212,6 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
                     disabled={!isActive}
                     error={errors.price ? errors.price : isErrors.price}
                     min={1}
-                    max={100}
                     required
                     error-message={isErrors.price}
                   />
@@ -322,7 +314,22 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
                       {goal.products.map((product) => (
                         <React.Fragment key={product.id}>
                           <s-table-row>
-                            <s-table-cell>{product.title}</s-table-cell>
+                            <s-table-cell>
+                              {product.title}
+                              {alredyExistedProducts &&
+                                alredyExistedProducts.find(
+                                  (p) => p.id === product.id,
+                                ) && (
+                                  <s-clickable-chip
+                                    onClick={() =>
+                                      handleRemoveProducts(product.id)
+                                    }
+                                    color="strong"
+                                  >
+                                    Remove
+                                  </s-clickable-chip>
+                                )}
+                            </s-table-cell>
                             <s-table-cell>
                               {product.variants?.length === 1
                                 ? product.variants[0].price
@@ -341,6 +348,10 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
                     </s-table-body>
                   </s-table>
                 </s-box>
+                <p style={{ maxWidth: "240px" }}>
+                  <b>Notice: </b>All goal values are based on your store’s
+                  default currency <b>({Shop.currencyCode}).</b>
+                </p>
               </>
             )}
         </s-stack>
