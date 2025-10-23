@@ -24,6 +24,7 @@ export const GET_GOALS_METAFIELD_QUERY = `query ShopAndCartGoal {
     edges{
       node{
         id
+        title
         app{
           id
           title

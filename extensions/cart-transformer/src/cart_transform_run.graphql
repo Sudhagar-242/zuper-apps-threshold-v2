@@ -1,0 +1,25 @@
+query CartTransformRunInput {
+  cart {
+    lines {
+      id
+      quantity
+      cost {
+        totalAmount {
+          amount
+          currencyCode
+        }
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+  }
+  shop {
+    metafield(namespace: "zuper_threshold", key: "goals") {
+      value
+    }
+  }
+}

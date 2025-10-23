@@ -23,20 +23,15 @@ const OtherOptionsBlock = ({
             borderRadius="small"
           >
             <s-stack gap="base">
-              {/* <s-select
-                label="Select the icon you want to display (used in Icons design)"
-                disabled={!isActive}
-              >
-                <s-option value="1">icon</s-option>
-                <s-option value="2">icon 2</s-option>
-                <s-option value="3">icoon 3</s-option>
-              </s-select> */}
               <s-text>Combine this goal with your other goals</s-text>
               <s-checkbox
                 label="compine"
                 accessibilityLabel="Compine"
                 checked={isCombined}
-                onChange={(e) => onChange("compined", e.currentTarget.value)}
+                onChange={(e) => {
+                  console.log("compined", e.currentTarget.checked);
+                  onChange("compined", e.currentTarget.checked);
+                }}
                 disabled={!isActive}
                 defaultChecked={isCombined}
               ></s-checkbox>

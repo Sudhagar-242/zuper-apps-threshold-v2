@@ -3072,9 +3072,9 @@ export enum WeightUnit {
 export type DeliveryInputVariables = Exact<{ [key: string]: never; }>;
 
 
-export type DeliveryInput = { __typename?: 'Input', shop: { __typename?: 'Shop', goals?: { __typename?: 'Metafield', value: string, type: string } | null }, cart: { __typename?: 'Cart', deliveryGroups: Array<{ __typename?: 'CartDeliveryGroup', id: string }> }, discount: { __typename?: 'Discount', discountClasses: Array<DiscountClass> } };
+export type DeliveryInput = { __typename?: 'Input', shop: { __typename?: 'Shop', goals?: { __typename?: 'Metafield', value: string, type: string } | null }, cart: { __typename?: 'Cart', cost: { __typename?: 'CartCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any } }, deliveryGroups: Array<{ __typename?: 'CartDeliveryGroup', id: string }>, lines: Array<{ __typename?: 'CartLine', id: string, quantity: number, cost: { __typename?: 'CartLineCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any } }, merchandise: { __typename?: 'CustomProduct' } | { __typename?: 'ProductVariant', product: { __typename?: 'Product', id: string } } }> }, discount: { __typename?: 'Discount', discountClasses: Array<DiscountClass> } };
 
 export type CartInputVariables = Exact<{ [key: string]: never; }>;
 
 
-export type CartInput = { __typename?: 'Input', shop: { __typename?: 'Shop', goals?: { __typename?: 'Metafield', value: string, type: string } | null }, cart: { __typename?: 'Cart', lines: Array<{ __typename?: 'CartLine', id: string, cost: { __typename?: 'CartLineCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any } } }> }, discount: { __typename?: 'Discount', discountClasses: Array<DiscountClass> } };
+export type CartInput = { __typename?: 'Input', shop: { __typename?: 'Shop', goals?: { __typename?: 'Metafield', value: string, type: string } | null }, cart: { __typename?: 'Cart', lines: Array<{ __typename?: 'CartLine', id: string, cost: { __typename?: 'CartLineCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any } }, merchandise: { __typename?: 'CustomProduct' } | { __typename?: 'ProductVariant', product: { __typename?: 'Product', id: string } } }> }, discount: { __typename?: 'Discount', discountClasses: Array<DiscountClass> } };

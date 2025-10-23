@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { AddConditionBlockChoices } from "app/enums/addBlock";
 import { ArrowPlacer } from "../goal-add-block";
+import {
+  Labels as ConfigLabels,
+  Validation as ConfigValidation,
+} from "app/constants/configurationAddGoals";
 import { CallbackEvent } from "@shopify/polaris-types";
 import { GoalType } from "app/types/goals";
 import { useShop } from "app/context/shop-provider-ctx";
 import { loaderResponse } from "app/routes/app.configuration-add-goals";
 import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
+import ProductTable from "../products-table";
 
 interface ConditionBlockProps {
   goal: GoalType;
@@ -53,45 +58,49 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
       Number(goal.price) <= 0 &&
       isActive
     ) {
-      newErrors.price = "Price must be greater than 0";
+      newErrors.price = ConfigValidation.priceGreaterThanZero;
     }
     if (
       goal.condition === AddConditionBlockChoices.CART_QUANTITY &&
       Number(goal.cartQuantity) <= 0 &&
       isActive
     ) {
-      newErrors.quantity = "Quantity must be greater than 0";
+      newErrors.quantity = ConfigValidation.quantityGreaterThanZero;
     }
     if (
       goal.condition === AddConditionBlockChoices.CART_HAS_PRODUCTS &&
       (!goal.products || goal.products?.length === 0) &&
       isActive
     ) {
-      newErrors.products = "Select at least 1 product";
+      newErrors.products = ConfigValidation.selectAtLeastOneProduct;
     }
 
     setIsErrors(newErrors);
-  }, [goal.condition, goal.products, isActive]);
+  }, [goal.cartQuantity, goal.condition, goal.price, goal.products, isActive]);
 
   const handleProductSelect = async () => {
-    const selectedProducts =
-      typeof goal.products === "string"
-        ? JSON.parse(goal.products)
-        : (goal.products ?? []);
+    const selectedProductsIds = goal.products?.map((product) => ({
+      id: product.id,
+    }));
 
     if (!isActive) return;
-    // Assuming `shopify.resourcePicker` is globally available or imported
+
     const selected = await window.shopify?.resourcePicker({
       type: "product",
       multiple: true,
-      selectionIds: selectedProducts,
+      selectionIds: selectedProductsIds,
       filter: {
-        query:
-          "-id:10033057825047 AND -id:10033058316567 AND -id:10033058349335",
+        query: alredyExistedProducts
+          .filter((p) => !goal.products?.some((gp) => gp.id === p.id))
+          .map((p) => `-id:${p.id?.split("/").pop()}`)
+          .join(" AND "),
       },
     });
     if (selected) {
-      onChange("products", selected);
+      onChange(
+        "products",
+        selected.map((product) => ({ id: product.id, title: product.title })),
+      );
     }
   };
 
@@ -103,19 +112,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
     if (goal.products?.length === 0) {
       setIsErrors((prev) => ({
         ...prev,
-        products: "Select at least 1 product",
-      }));
-    }
-  };
-  const handleRemoveVariantsProducts = (variantId: string) => {
-    const removedProuctVariants = goal.products?.map((product) => {
-      product.variants.filter((variant) => variant.id !== variantId);
-    });
-    onChange("products", removedProuctVariants);
-    if (goal.products?.length === 0) {
-      setIsErrors((prev) => ({
-        ...prev,
-        products: "Select at least 1 product",
+        products: ConfigValidation.selectAtLeastOneProduct,
       }));
     }
   };
@@ -129,7 +126,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
       onChange("price", e?.currentTarget.value);
       setIsErrors((prev) => ({
         ...prev,
-        price: "MoneyField must be greater than 0",
+        price: ConfigValidation.priceGreaterThanZero,
       }));
     } else {
       setIsErrors((prev) => ({ ...prev, price: "" }));
@@ -153,7 +150,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
       onChange("cartQuantity", e?.currentTarget.value);
       setIsErrors((prev) => ({
         ...prev,
-        quantity: "Quantity must be greater than 0",
+        quantity: ConfigValidation.quantityGreaterThanZero,
       }));
     } else {
       setIsErrors((prev) => ({ ...prev, quantity: "" }));
@@ -163,7 +160,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
 
   return (
     <s-section padding="base">
-      <s-heading>Conditions</s-heading>
+      <s-heading>{ConfigLabels.conditionsHeading}</s-heading>
       <s-box
         border="base strong dashed"
         padding="base"
@@ -241,7 +238,7 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
                         : isErrors.products
                           ? isErrors.products
                           : goal.products?.length === 0
-                            ? "select atleast one Product"
+                            ? ConfigValidation.selectAtLeastOneProduct
                             : undefined
                     }
                     required
@@ -299,59 +296,30 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
             goal.products?.length > 0 && (
               <>
                 <s-divider />
-                <s-box border="base strong solid" padding="small base">
-                  <s-table>
-                    <s-table-header-row>
-                      <s-table-header listSlot="primary">
-                        Product
-                      </s-table-header>
-                      <s-table-header listSlot="secondary">
-                        Price
-                      </s-table-header>
-                      <s-table-header>Remove</s-table-header>
-                    </s-table-header-row>
-                    <s-table-body>
-                      {goal.products.map((product) => (
-                        <React.Fragment key={product.id}>
-                          <s-table-row>
-                            <s-table-cell>
-                              {product.title}
-                              {alredyExistedProducts &&
-                                alredyExistedProducts.find(
-                                  (p) => p.id === product.id,
-                                ) && (
-                                  <s-clickable-chip
-                                    onClick={() =>
-                                      handleRemoveProducts(product.id)
-                                    }
-                                    color="strong"
-                                  >
-                                    Remove
-                                  </s-clickable-chip>
-                                )}
-                            </s-table-cell>
-                            <s-table-cell>
-                              {product.variants?.length === 1
-                                ? product.variants[0].price
-                                : ""}
-                            </s-table-cell>
-                            <s-table-cell>
-                              <s-link
-                                onClick={() => handleRemoveProducts(product.id)}
-                              >
-                                Remove
-                              </s-link>
-                            </s-table-cell>
-                          </s-table-row>
-                        </React.Fragment>
-                      ))}
-                    </s-table-body>
-                  </s-table>
+                <s-box>
+                  <s-heading>Notice:</s-heading>
+                  <s-unordered-list>
+                    <s-list-item>
+                      You can’t select the same product for more than one goal.
+                    </s-list-item>
+                    <s-list-item>
+                      If you select variants, they will still be considered part
+                      of the same product.
+                    </s-list-item>
+                    {/* <s-list-item>
+                      All goal values are based on your store’s default currency
+                      <b>({Shop.currencyCode})</b>.
+                    </s-list-item> */}
+                  </s-unordered-list>
                 </s-box>
-                <p style={{ maxWidth: "240px" }}>
-                  <b>Notice: </b>All goal values are based on your store’s
-                  default currency <b>({Shop.currencyCode}).</b>
-                </p>
+
+                <s-divider />
+                <s-box border="base strong solid" padding="small base">
+                  <ProductTable
+                    products={goal.products}
+                    handleRemoveProducts={handleRemoveProducts}
+                  />
+                </s-box>
               </>
             )}
         </s-stack>
