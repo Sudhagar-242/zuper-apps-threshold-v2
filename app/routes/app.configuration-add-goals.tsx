@@ -3,7 +3,6 @@ import {
   LoaderFunctionArgs,
   ActionFunctionArgs,
   useLoaderData,
-  useFetcher,
   useSubmit,
 } from "react-router";
 import { authenticate } from "app/shopify.server";
@@ -12,11 +11,19 @@ import {
   GET_GOALS_METAFIELD_QUERY,
 } from "app/graphql/get-and-update-goals-metafield";
 import { ensureDiscountExists } from "app/utils/create-discount-function-existance";
-import FormComponent from "app/components/addGoals/formExampleComponent";
 import { GoalType } from "app/types/goals";
 import { ShopProvider } from "app/context/shop-provider-ctx";
-import { AddRewardBlockChoices } from "app/enums/addBlock";
 import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
+import {
+  createDefaultGoal,
+  Labels as ConfigLabels,
+  Toasts as ConfigToasts,
+  UI as ConfigUI,
+  DefaultGoalMessages,
+  AppFunctionNames,
+} from "app/constants/configurationAddGoals";
+import GoalConfiguration from "app/components/addGoals/goal-add-block";
+import { CREATE_CART_TRANSFORM_EXISTANCE } from "app/graphql/cart-transform-existance-query";
 
 export interface loaderResponse {
   shop: {
@@ -48,16 +55,30 @@ export interface loaderResponse {
 export async function loader({ request }: LoaderFunctionArgs) {
   const { admin } = await authenticate.admin(request);
   const response = await admin.graphql(GET_GOALS_METAFIELD_QUERY);
+
+  const createCartTransform = await admin.graphql(
+    CREATE_CART_TRANSFORM_EXISTANCE,
+    {
+      variables: {
+        functionId: "cart-transformer",
+        blockOnFailure: true,
+      },
+    },
+  );
   const data = (await response.json()).data as loaderResponse;
   const functionId = (() => {
     let id = "";
     data.shopifyFunctions.edges.forEach((edge) => {
-      if (edge.node.app.id === data.app.id) {
+      if (
+        edge.node.app.id === data.app.id &&
+        edge.node.title === AppFunctionNames.discount_function
+      ) {
         id = edge.node.id;
       }
     });
     return id;
   })();
+  console.log(functionId);
   await ensureDiscountExists(
     admin,
     data.shop.discountId,
@@ -70,7 +91,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
-  const response = await admin.graphql(CREATE_OR_UPDATE_METAFIELD, {
+  await admin.graphql(CREATE_OR_UPDATE_METAFIELD, {
     variables: {
       ownerId: formData.get("shopId"),
       namespace: "zuper_threshold",
@@ -87,10 +108,9 @@ const FormCreation = () => {
   const Shop = useLoaderData<typeof loader>();
   const submit = useSubmit();
 
-  const [duplicateProducts, setDuplicateProducts] = useState<Product[]>([]);
-
-  // const [savedGoals, setSavedGoals] = useState<GoalType[]>([]);
-  // const [goals, setGoals] = useState<GoalType[]>([]);
+  const [alreadySelectedProducts, setAlreadySelectedProducts] = useState<
+    Product[]
+  >([]);
 
   const [savedGoals, setSavedGoals] = useState<GoalType[]>(
     Shop.goals
@@ -114,12 +134,17 @@ const FormCreation = () => {
   useEffect(() => {
     setIsDirty(JSON.stringify(goals) !== JSON.stringify(savedGoals));
   }, [goals, savedGoals]);
+
+  useEffect(() => {
+    setAlreadySelectedProducts(goals.flatMap((goal) => goal.products ?? []));
+  }, [goals]);
+
   console.log("loader", Shop);
   useEffect(() => {
     if (isDirty) {
-      shopify.saveBar.show("my-save-bar");
+      shopify.saveBar.show(ConfigUI.saveBarId);
     } else {
-      shopify.saveBar.hide("my-save-bar");
+      shopify.saveBar.hide(ConfigUI.saveBarId);
     }
   }, [isDirty]);
 
@@ -128,23 +153,13 @@ const FormCreation = () => {
     setGoals((prev) => prev.map((g) => (g.id === goal.id ? goal : g)));
   };
 
-  // Add a new blank goal
+  // Add a new blank goal using the centralized factory
   const addGoal = () => {
-    const newGoal: GoalType = {
-      id: `goal_${Date.now()}`,
-      title: `Goal #${goals.length + 1}`,
-      isActive: true,
-      headline: "%remaining% more for %discount% off",
-      topBarHeadlineIcons: "%discount% discount",
-      topBarHeadlineSimple: "Spend %remaining% more to get %discount% off",
-      confirmationMessage: "You got %discount% off",
-      remainingTargetMessage: "%remaining% away",
-      discountAppliedMessage: "%discount% off",
-      compined: true,
-      condition: "cart_value",
-      price: "0",
-      offer: AddRewardBlockChoices.FREE_SHIPPING,
-    };
+    const newGoal = createDefaultGoal({
+      title: `${DefaultGoalMessages.titlePrefix}${goals.length + 1}`,
+      productsCondition: "any",
+      cartDiscount: "10",
+    });
     setGoals((prev) => [...prev, newGoal]);
   };
 
@@ -168,7 +183,7 @@ const FormCreation = () => {
 
       setSavedGoals(goals);
       setIsDirty(false);
-      shopify.toast.show("Goal Saved", { duration: 1000 });
+      shopify.toast.show(ConfigToasts.goalSaved, { duration: 1000 });
     }
     console.log("error", hasError);
   };
@@ -194,16 +209,16 @@ const FormCreation = () => {
                   variant="tertiary"
                   type="button"
                   icon="arrow-left"
-                  accessibilityLabel="back"
-                  href="/app"
+                  accessibilityLabel={ConfigLabels.backAccessibilityLabel}
+                  href={ConfigUI.backHref}
                 />
-                <h2>Goal Configuration</h2>
+                <h2>{ConfigLabels.pageTitle}</h2>
               </s-stack>
             </s-box>
             {goals?.length > 0 ? (
               goals.map((goal) => (
                 <React.Fragment key={goal.id}>
-                  <FormComponent
+                  <GoalConfiguration
                     goal={goal}
                     onChange={updateGoalField}
                     onRemove={handleRemove}
@@ -214,8 +229,7 @@ const FormCreation = () => {
                         return [...updated, { id, error }];
                       });
                     }}
-                    duplicateProducts={duplicateProducts}
-                    setDuplicateProducts={setDuplicateProducts}
+                    AlredyExistedProducts={alreadySelectedProducts}
                   />
                 </React.Fragment>
               ))

@@ -1,10 +1,8 @@
-import { AddConditionBlockChoices } from "app/enums/addBlock";
 import {
   DeliveryDiscountSelectionStrategy,
   DiscountClass,
   DeliveryInput,
   CartDeliveryOptionsDiscountsGenerateRunResult,
-  DeliveryDiscountCandidate,
 } from "../generated/api";
 
 export function cartDeliveryOptionsDiscountsGenerateRun(

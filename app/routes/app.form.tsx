@@ -92,7 +92,7 @@ const FormCreation = () => {
           {goals?.length > 0 ? (
             goals.map((goal) => (
               <React.Fragment key={goal.id}>
-                <FormComponent
+                {/* <FormComponent
                   goal={goal}
                   onChange={updateGoalField}
                   onRemove={handleRemove}
@@ -103,7 +103,7 @@ const FormCreation = () => {
                       return [...updated, { id, error }];
                     });
                   }}
-                />
+                /> */}
               </React.Fragment>
             ))
           ) : (

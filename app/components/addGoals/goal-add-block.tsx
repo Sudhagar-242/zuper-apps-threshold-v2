@@ -1,77 +1,57 @@
-import { SetStateAction, useEffect, useRef, useState } from "react";
-import {
-  AddConditionBlockChoices,
-  AddRewardBlockChoices,
-} from "../../enums/addBlock";
+import { GoalType } from "app/types/goals";
+import ConditionBlock from "./add-goals-blocks/condition-block";
+import RewardBlocK from "./add-goals-blocks/rewards-block";
+import GoalTextBlock from "./add-goals-blocks/goal-text-block";
+import { useState, useEffect } from "react";
+import OtherOptionsBlock from "./add-goals-blocks/other-options-block";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
-import type { GoalType } from "app/types/goals";
-import ConditionBlock from "./add-goals-components/condition-block";
-import GoalTextBlock from "./add-goals-components/goal-text-block";
-import OtherOptionsBlock from "./add-goals-components/other-options-block";
-import RewardBlocK from "./add-goals-components/rewards-block";
-
-export const ArrowPlacer = ({
-  place,
-}: {
-  place: "start" | "center" | "end";
-}) => (
-  <s-stack paddingBlock="small-200 small-400" justifyContent={place}>
-    <s-text>➜ </s-text>
-  </s-stack>
-);
-
-type AddGoalBlockProps = {
-  idx: number;
-  id: string;
-  onRemove: (id: string) => void;
+interface Props {
   goal: GoalType;
-  isActiveGoal: boolean;
-  onChange?: () => void;
-};
+  onChange: (updatedGoal: GoalType) => void;
+  onRemove: (id: string) => void;
+  AllGoals: GoalType[];
+  announceError: (id: string, error: boolean) => void;
+  AlredyExistedProducts: Product[];
+}
 
-const AddGoalBlock = ({
-  idx,
-  id,
+import { validateGoal, ValidationResult } from "app/utils/validateGoal";
+import GoalListShower from "./goal-list-shower";
+
+const GoalConfiguration = ({
+  goal: selectedGoal,
+  onChange,
   onRemove,
-  goal,
-  isActiveGoal = true,
-  onChange = () => {},
-}: AddGoalBlockProps) => {
-  const [isActive, setIsActive] = useState<boolean>(
-    typeof isActiveGoal === "string" ? JSON.parse(isActiveGoal) : isActiveGoal,
-  );
+  AllGoals,
+  announceError,
+  AlredyExistedProducts,
+}: Props) => {
+  const [goal, setGoal] = useState<GoalType>(selectedGoal);
   const [isExpanded, setIsExpanded] = useState(true);
-  const [goalName, setGoalName] = useState<string>(goal.goalName ?? "");
+  const [validationErrors, setValidationErrors] = useState<
+    ValidationResult["errors"]
+  >({} as ValidationResult["errors"]);
 
-  const [selectedProducts, setSelectedProducts] = useState(
-    (typeof goal.Products === "string"
-      ? JSON.parse(goal.Products)
-      : goal.Products) ?? null,
-  );
+  console.log("Duplicate Products", AlredyExistedProducts);
 
-  const [selectedGifts, setSelectedGifts] = useState(
-    (typeof goal.freeGifts === "string"
-      ? JSON.parse(goal.freeGifts)
-      : goal.freeGifts) ?? null,
-  );
+  useEffect(() => {
+    const { hasError, errors } = validateGoal(goal, AllGoals);
+    setValidationErrors(errors);
+    announceError(goal.id, hasError);
+    setGoal(selectedGoal);
+  }, [selectedGoal, AlredyExistedProducts, goal, AllGoals]);
 
-  const [_, setAnyChanges] = useState(false);
-
-  const handleOnChange = () => {
-    setAnyChanges((prev) => !prev);
-    setSelectedProducts(
-      (typeof goal.Products === "string"
-        ? JSON.parse(goal.Products)
-        : goal.Products) ?? null,
-    );
-    setSelectedGifts(
-      (typeof goal.freeGifts === "string"
-        ? JSON.parse(goal.freeGifts)
-        : goal.freeGifts) ?? null,
-    );
-    console.log("handle on change");
-    onChange();
+  const handleInputChange = (field: keyof GoalType, value: unknown) => {
+    const updatedGoal = { ...goal, [field]: value };
+    setGoal(updatedGoal);
+    onChange(updatedGoal);
   };
+
+  const handleRemove = () => {
+    onRemove(goal.id);
+    announceError(goal.id, false);
+  };
+
   return (
     <>
       <s-section accessibilityLabel="Goal Block">
@@ -83,35 +63,29 @@ const AddGoalBlock = ({
               alignContent="start"
               gap="large"
             >
-              <input
-                hidden
-                name={`goals[${idx}][isActive]`}
-                value={isActive ? "true" : "false"}
-                onChange={() => {}}
-              />
               <s-switch
-                checked={isActive}
+                checked={goal.isActive}
                 onChange={(e) => {
-                  setIsActive(e.currentTarget.checked);
+                  handleInputChange("isActive", e.currentTarget.checked);
                 }}
                 accessibilityLabel="isActive"
-                defaultChecked={isActive}
+                defaultChecked={goal.isActive}
               ></s-switch>
               <s-stack alignContent="start">
+                <s-heading>{goal.title}</s-heading>
                 <input
-                  hidden
                   type="text"
-                  name={`goals[${idx}][title]`}
-                  value={`Goal ${idx + 1}`}
-                  placeholder="Enter goal title"
-                  onChange={() => {}}
+                  value={goal.title}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    outline: "none",
+                  }}
                 />
-                <s-heading>Goal {idx + 1}</s-heading>
-                <InlineEditableText
-                  index={idx}
-                  value={goalName}
-                  onSave={setGoalName}
-                />
+                <s-text>
+                  <GoalListShower goal={goal} />
+                </s-text>
               </s-stack>
             </s-stack>
             <s-button
@@ -124,83 +98,73 @@ const AddGoalBlock = ({
             />
           </s-stack>
           {
-            <>
-              <s-stack
-                accessibilityVisibility={isExpanded ? "visible" : "exclusive"}
-                gap="base"
-              >
-                <s-divider color="base" />
-                <ConditionBlock
-                  isActive={isActive}
-                  selectedProducts={selectedProducts}
-                  setSelectedProducts={setSelectedProducts}
-                  idx={idx}
-                  selectedChoice={goal.condition as AddConditionBlockChoices}
-                  selectedProductCondition={goal.productsCondition ?? "any"}
-                  selectedQuantity={goal.cartQuantity ?? "2"}
-                  price={goal.price ?? "100"}
-                  onChange={handleOnChange}
-                />
-                <s-divider />
-                <RewardBlocK
-                  isActive={isActive}
-                  selectedGifts={selectedGifts}
-                  idx={idx}
-                  selectedOfferPercentage={goal.cartDiscount ?? "10"}
-                  selectedRewardChoice={
-                    (goal.offer as AddRewardBlockChoices) ??
-                    AddRewardBlockChoices.FREE_SHIPPING
-                  }
-                  onChange={onChange}
-                />
-                <s-divider />
-                <GoalTextBlock
-                  isActive={isActive}
-                  idx={idx}
-                  selectedHeadline={goal.headline}
-                  selectedTopBarHeadlineIcons={goal.topBarHeadlineIcons}
-                  selectedTopBarHeadlineSimple={goal.topBarHeadlineSimple}
-                  selectedConfirmationMessage={goal.confirmationMessage}
-                  selectedRemainingTargetMessage={goal.remainingTargetMessage}
-                  selectedDiscountAppliedMessage={goal.discountAppliedMessage}
-                />
+            <s-stack
+              accessibilityVisibility={isExpanded ? "visible" : "exclusive"}
+              gap="base"
+            >
+              <s-divider color="base" />
+              <ConditionBlock
+                goal={goal}
+                isActive={goal.isActive}
+                errors={{
+                  price: validationErrors.price,
+                  quantity: validationErrors.quantity,
+                  products: validationErrors.products,
+                }}
+                onChange={handleInputChange}
+                alredyExistedProducts={AlredyExistedProducts}
+              />
 
-                <s-divider />
-                <OtherOptionsBlock
-                  isActive={isActive}
-                  idx={idx}
-                  isCombined={
-                    typeof goal.compined === "string"
-                      ? JSON.parse(goal.compined)
-                      : goal.compined
-                  }
-                />
-                <s-divider />
-                <s-box>
-                  <s-section>
-                    <s-stack direction="inline" justifyContent="space-between">
-                      <s-link
-                        target="_blank"
-                        tone="neutral"
-                        onClick={() => setIsExpanded(false)}
-                      >
-                        Close
-                      </s-link>
-                      <s-link
-                        target="_blank"
-                        tone="critical"
-                        onClick={() => {
-                          onChange();
-                          onRemove(id);
-                        }}
-                      >
-                        Remove
-                      </s-link>
-                    </s-stack>
-                  </s-section>
-                </s-box>
-              </s-stack>
-            </>
+              <s-divider />
+              <RewardBlocK
+                goal={goal}
+                isActive={goal.isActive}
+                errors={{
+                  discount: validationErrors.cartDiscount,
+                  gifts: validationErrors.gifts,
+                }}
+                onChange={handleInputChange}
+              />
+
+              <s-divider />
+              <GoalTextBlock
+                goal={goal}
+                isActive={goal.isActive}
+                onChange={handleInputChange}
+              />
+
+              {/* <s-divider />
+
+              <OtherOptionsBlock
+                isActive={goal.isActive}
+                isCombined={goal.compined}
+                onChange={handleInputChange}
+              /> */}
+
+              <s-divider />
+              <s-box>
+                <s-section>
+                  <s-stack direction="inline" justifyContent="space-between">
+                    <s-link
+                      target="_blank"
+                      tone="neutral"
+                      onClick={() => setIsExpanded(false)}
+                    >
+                      Close
+                    </s-link>
+                    <s-link
+                      target="_blank"
+                      tone="critical"
+                      onClick={() => {
+                        handleRemove();
+                      }}
+                    >
+                      Remove
+                    </s-link>
+                  </s-stack>
+                </s-section>
+              </s-box>
+            </s-stack>
           }
         </s-stack>
       </s-section>
@@ -208,82 +172,14 @@ const AddGoalBlock = ({
   );
 };
 
-export default AddGoalBlock;
+export default GoalConfiguration;
 
-interface InlineEditableTextProps {
-  value: string;
-  onSave: React.Dispatch<SetStateAction<string>>;
-  index: number;
-}
-
-export const InlineEditableText = ({
-  value,
-  onSave,
-  index,
-}: InlineEditableTextProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Focus input automatically when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    if (isEditing) {
-      setIsEditing(false);
-      if (inputValue.trim() !== value) {
-        onSave(inputValue.trim());
-      }
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      setIsEditing(false);
-      onSave(inputValue.trim());
-    }
-    if (e.key === "Escape") {
-      setIsEditing(false);
-      setInputValue(value); // reset to original
-    }
-  };
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="text"
-        name={`goals[${index}][goalName]`}
-        value={inputValue}
-        readOnly={!isEditing}
-        onDoubleClick={handleDoubleClick}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        style={{
-          border: isEditing ? "1px solid #ccc" : "1px solid transparent",
-          background: isEditing ? "#fff" : "transparent",
-          cursor: isEditing ? "text" : "pointer",
-          padding: "4px 6px",
-          borderRadius: "4px",
-          fontSize: "14px",
-          outline: "none",
-          width: "100%",
-        }}
-      />
-    </>
-  );
-};
+export const ArrowPlacer = ({
+  place,
+}: {
+  place: "start" | "center" | "end";
+}) => (
+  <s-stack paddingBlock="small-200 small-400" justifyContent={place}>
+    <s-text>➜ </s-text>
+  </s-stack>
+);

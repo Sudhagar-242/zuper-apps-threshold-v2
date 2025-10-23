@@ -187,53 +187,43 @@ import {
   CartInput,
   CartLinesDiscountsGenerateRunResult,
   OrderDiscountCandidate,
-  Product,
 } from "../generated/api";
 import {
   AddConditionBlockChoices,
   AddRewardBlockChoices,
 } from "app/enums/addBlock";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 function generateDiscountOperation(
   goal: GoalType,
-  cart: {
-    lines: {
-      id: string;
-      cost: {
-        subtotalAmount: {
-          amount: any;
-        };
-      };
-      merchandise: {
-        product: {
-          id: string;
-        };
-      };
-    }[];
-  },
+  cartProductIdSet: string[],
+  cartLineIdSet: string[],
 ): OrderDiscountCandidate | undefined {
-  // Map line IDs once
-  const cartProductIdSet = new Set(
-    cart.lines.map((line) => line.merchandise.product.id),
-  );
-  const cartLineIdSet = new Set(cart.lines.map((line) => line.id));
-
   // Check for product condition
   const checkHasProductCondition = (): boolean => {
-    const goalProducts: Product[] =
-      typeof goal.products === "string"
-        ? JSON.parse(goal?.products ?? "[]")
-        : goal.products;
+    const goalProducts: Product[] = goal.products ?? [];
     const productsCondition = goal.productsCondition;
 
     if (productsCondition === "any") {
-      return goalProducts.some((product) => cartProductIdSet.has(product.id));
+      return goalProducts.some((product) =>
+        cartProductIdSet.includes(product.id),
+      );
     }
     if (productsCondition === "all") {
-      return goalProducts.every((product) => cartProductIdSet.has(product.id));
+      return goalProducts.every((product) =>
+        cartProductIdSet.includes(product.id),
+      );
     }
     return false;
   };
+
+  console.log("\ncartLineIdSet", JSON.stringify(cartLineIdSet), "\v");
+  console.log("\ncartProductIdSet", JSON.stringify(cartProductIdSet), "\v");
+  console.log(
+    "\n goals and checkproductcondition",
+    JSON.stringify(goal),
+    checkHasProductCondition(),
+  );
 
   // Generate discount candidate based on condition type
   switch (goal.condition) {
@@ -315,6 +305,11 @@ export function cartLinesDiscountsGenerateRun(
   );
 
   const { shop, cart } = input;
+  // Map line IDs once
+  const cartProductIdSet = cart.lines.map(
+    (line) => line.merchandise?.product.id,
+  );
+  const cartLineIdSet = cart.lines.map((line) => line.id);
 
   // Safely parse and filter active goals with order discounts
   const goals: GoalType[] = shop.goals?.value
@@ -329,12 +324,14 @@ export function cartLinesDiscountsGenerateRun(
     return { operations: [] };
   }
 
-  console.log(JSON.stringify(cart.lines));
-  console.log(JSON.stringify(goals));
+  console.log("cartlines", JSON.stringify(cart.lines));
+  console.log("goals", JSON.stringify(goals));
 
   // Generate discount candidates from goals
   const discountCandidates: OrderDiscountCandidate[] = goals
-    .map((goal) => generateDiscountOperation(goal, cart))
+    .map((goal) =>
+      generateDiscountOperation(goal, cartProductIdSet, cartLineIdSet),
+    )
     .filter(Boolean) as OrderDiscountCandidate[];
 
   if (!discountCandidates.length) {
