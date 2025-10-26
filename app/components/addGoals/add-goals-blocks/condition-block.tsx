@@ -99,7 +99,11 @@ const ConditionBlock: React.FC<ConditionBlockProps> = ({
     if (selected) {
       onChange(
         "products",
-        selected.map((product) => ({ id: product.id, title: product.title })),
+        selected.map((product: Partial<Product>) => ({
+          id: product.id,
+          title: product.title,
+          variants: product?.variants,
+        })),
       );
     }
   };

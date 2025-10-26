@@ -8,6 +8,7 @@ import {
   Labels as ConfigLabels,
   Validation as ConfigValidation,
 } from "app/constants/configurationAddGoals";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 interface RewardsBlockType {
   goal: GoalType;
@@ -30,7 +31,6 @@ const RewardBlocK = ({
   useEffect(() => {
     const newError: { discount?: string; gifts?: string; products?: string } =
       {};
-
     // Validate order discount
     if (goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT) {
       const discountVal = Number(goal.cartDiscount ?? NaN);
@@ -49,6 +49,10 @@ const RewardBlocK = ({
     setIsErrors(newError);
   }, [goal, goal.cartDiscount, goal.offer, goal.freeGifts, isActive]);
 
+  useEffect(() => {
+    console.log("goal offer changes", goal.offer);
+  }, [goal.offer]);
+
   const handleProductSelect = async () => {
     if (!isActive) return;
     // Assuming `shopify.resourcePicker` is globally available or imported
@@ -64,7 +68,11 @@ const RewardBlocK = ({
     if (selected) {
       onChange(
         "freeGifts",
-        selected.map((product) => ({ id: product.id, title: product.title })),
+        selected.map((product: Partial<Product>) => ({
+          id: product.id,
+          title: product.title,
+          variants: product?.variants,
+        })),
       );
     }
   };
@@ -130,6 +138,7 @@ const RewardBlocK = ({
                   required
                   disabled={!isActive}
                   error={errors.gifts ? errors.gifts : isErrors.gifts}
+                  value={goal.offer}
                 >
                   <s-option
                     value={AddRewardBlockChoices.FREE_SHIPPING}
@@ -147,14 +156,14 @@ const RewardBlocK = ({
                   >
                     Order Discount
                   </s-option>
-                  <s-option
+                  {/* <s-option
                     value={AddRewardBlockChoices.FREE_GIFT}
                     defaultSelected={
                       goal.offer === AddRewardBlockChoices.FREE_GIFT
                     }
                   >
                     Free Gift
-                  </s-option>
+                  </s-option> */}
                 </s-select>
               </s-stack>
 

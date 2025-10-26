@@ -16,7 +16,10 @@ export type ValidationResult = {
   };
 };
 
-export function validateGoal(goal: GoalType, allGoals: GoalType[]): ValidationResult {
+export function validateGoal(
+  goal: GoalType,
+  allGoals: GoalType[],
+): ValidationResult {
   const errors: ValidationResult["errors"] = {} as ValidationResult["errors"];
   let hasError = false;
 
@@ -36,9 +39,14 @@ export function validateGoal(goal: GoalType, allGoals: GoalType[]): ValidationRe
     const sameCondition = g.condition === goal.condition;
     const sameOffer = g.offer === goal.offer;
     const samePrice = Number(g.price ?? 0) === Number(goal.price ?? 0);
-    const sameQuantity = Number(g.cartQuantity ?? 0) === Number(goal.cartQuantity ?? 0);
-    const sameDiscount = Number(g.cartDiscount ?? 0) === Number(goal.cartDiscount ?? 0);
-    const sameProducts = isSameProductSet(g.products ?? [], goal.products ?? []);
+    const sameQuantity =
+      Number(g.cartQuantity ?? 0) === Number(goal.cartQuantity ?? 0);
+    const sameDiscount =
+      Number(g.cartDiscount ?? 0) === Number(goal.cartDiscount ?? 0);
+    const sameProducts = isSameProductSet(
+      g.products ?? [],
+      goal.products ?? [],
+    );
 
     switch (goal.condition) {
       case "cart_value":
@@ -53,7 +61,8 @@ export function validateGoal(goal: GoalType, allGoals: GoalType[]): ValidationRe
   });
 
   if (isExactDuplicate) {
-    errors.general = "A goal with the same condition and reward already exists.";
+    errors.general =
+      "A goal with the same condition and reward already exists.";
     try {
       shopify.toast.show(errors.general, { duration: 1000, isError: true });
     } catch (e) {
@@ -84,13 +93,22 @@ export function validateGoal(goal: GoalType, allGoals: GoalType[]): ValidationRe
     case "cart_value": {
       const currentPrice = Number(goal.price ?? 0);
 
-      if (goal.price === "" || goal.price === null || typeof goal.price === "undefined") {
+      if (
+        goal.price === "" ||
+        goal.price === null ||
+        typeof goal.price === "undefined"
+      ) {
         errors.price = ConfigValidation.cannotBeEmpty;
         hasError = true;
         break;
       }
 
-      const isDuplicate = allGoals.some((g) => g !== goal && Number(g.price) === currentPrice);
+      const isDuplicate = allGoals.some(
+        (g) =>
+          g !== goal &&
+          Number(g.price) === currentPrice &&
+          g.condition === AddConditionBlockChoices.CART_VALUE,
+      );
 
       if (!currentPrice || currentPrice <= 0) {
         errors.price = ConfigValidation.priceGreaterThanZero;

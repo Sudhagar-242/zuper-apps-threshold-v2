@@ -56,15 +56,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { admin } = await authenticate.admin(request);
   const response = await admin.graphql(GET_GOALS_METAFIELD_QUERY);
 
-  const createCartTransform = await admin.graphql(
-    CREATE_CART_TRANSFORM_EXISTANCE,
-    {
-      variables: {
-        functionId: "cart-transformer",
-        blockOnFailure: true,
-      },
-    },
-  );
+  // const createCartTransform = await admin.graphql(
+  //   CREATE_CART_TRANSFORM_EXISTANCE,
+  //   {
+  //     variables: {
+  //       functionId: "cart-transformer",
+  //       blockOnFailure: true,
+  //     },
+  //   },
+  // );
   const data = (await response.json()).data as loaderResponse;
   const functionId = (() => {
     let id = "";
@@ -159,6 +159,7 @@ const FormCreation = () => {
       title: `${DefaultGoalMessages.titlePrefix}${goals.length + 1}`,
       productsCondition: "any",
       cartDiscount: "10",
+      cartQuantity: "2",
     });
     setGoals((prev) => [...prev, newGoal]);
   };
@@ -197,6 +198,8 @@ const FormCreation = () => {
     setGoals(savedGoals);
     setIsDirty(false);
   };
+
+  console.log("savedGoals", savedGoals, "goals", goals);
 
   return (
     <>

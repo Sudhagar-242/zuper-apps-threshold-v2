@@ -10,7 +10,10 @@ const NO_CHANGES: CartTransformRunResult = {
 export function cartTransformRun(
   input: CartTransformRunInput,
 ): CartTransformRunResult {
-  console.log("cart transfoermer workers");
+  console.log(
+    "cart transfoermer workers",
+    JSON.stringify(input.shop.metafield?.value),
+  );
   return NO_CHANGES;
 }
 

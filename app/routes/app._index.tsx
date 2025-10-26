@@ -134,7 +134,7 @@ export default function Index() {
         <s-button
           slot="secondary-actions"
           aria-label="Activate widget"
-          href={`https://${shop}/admin/themes/current/editor?context=apps&template=${"main"}&activateAppId=${api_key}/${"app-embed-block"}`}
+          href={`https://${shop}/admin/themes/current/editor?context=apps&template=${"main"}&activateAppId=${api_key}/${"zuper-progress-bar"}`}
         >
           Activate widget
         </s-button>

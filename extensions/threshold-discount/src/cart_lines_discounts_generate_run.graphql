@@ -21,6 +21,10 @@ query CartInput {
         }
       }
     }
+    attribute(key: "__goal") {
+      key
+      value
+    }
   }
   discount {
     discountClasses

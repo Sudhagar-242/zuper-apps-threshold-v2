@@ -35,13 +35,13 @@ function generateDiscountOperation(
     return false;
   };
 
-  console.log("\ncartLineIdSet", JSON.stringify(cartLineIdSet), "\v");
-  console.log("\ncartProductIdSet", JSON.stringify(cartProductIdSet), "\v");
-  console.log(
-    "\n goals and checkproductcondition",
-    JSON.stringify(goal),
-    checkHasProductCondition(),
-  );
+  // console.log("\ncartLineIdSet", JSON.stringify(cartLineIdSet), "\v");
+  // console.log("\ncartProductIdSet", JSON.stringify(cartProductIdSet), "\v");
+  // console.log(
+  //   "\n goals and checkproductcondition",
+  //   JSON.stringify(goal),
+  //   checkHasProductCondition(),
+  // );
 
   // Generate discount candidate based on condition type
   switch (goal.condition) {
@@ -128,6 +128,8 @@ export function cartLinesDiscountsGenerateRun(
     (line) => line.merchandise?.product.id,
   );
   const cartLineIdSet = cart.lines.map((line) => line.id);
+  const canApplyThresholdDiscount = input.cart.attribute?.value;
+  console.log(input.cart.attribute?.value, "cart attribute value");
 
   // Safely parse and filter active goals with order discounts
   const goals: GoalType[] = shop.goals?.value
@@ -142,8 +144,8 @@ export function cartLinesDiscountsGenerateRun(
     return { operations: [] };
   }
 
-  console.log("cartlines", JSON.stringify(cart.lines));
-  console.log("goals", JSON.stringify(goals));
+  // console.log("cartlines", JSON.stringify(cart.lines));
+  // console.log("goals", JSON.stringify(goals));
 
   // Generate discount candidates from goals
   const discountCandidates: OrderDiscountCandidate[] = goals
@@ -157,6 +159,26 @@ export function cartLinesDiscountsGenerateRun(
   }
 
   const operations = [];
+
+  if (canApplyThresholdDiscount === "Yes") {
+    operations.push({
+      orderDiscountsAdd: {
+        candidates: [
+          {
+            message: "Threshold Discount",
+            targets: [
+              {
+                orderSubtotal: { excludedCartLineIds: [] },
+              },
+            ],
+            value: { percentage: { value: 50 } },
+          },
+        ],
+        selectionStrategy: OrderDiscountSelectionStrategy.Maximum,
+      },
+    });
+    return { operations };
+  }
 
   if (hasOrderDiscountClass) {
     operations.push({
