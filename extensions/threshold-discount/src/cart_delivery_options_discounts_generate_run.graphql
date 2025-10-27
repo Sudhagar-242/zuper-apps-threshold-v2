@@ -6,8 +6,29 @@ query DeliveryInput {
     }
   }
   cart {
+    cost {
+      subtotalAmount {
+        amount
+      }
+    }
     deliveryGroups {
       id
+    }
+    lines {
+      id
+      cost {
+        subtotalAmount {
+          amount
+        }
+      }
+      quantity
+      merchandise {
+        ... on ProductVariant {
+          product {
+            id
+          }
+        }
+      }
     }
   }
   discount {

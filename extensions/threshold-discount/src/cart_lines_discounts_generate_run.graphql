@@ -13,6 +13,17 @@ query CartInput {
           amount
         }
       }
+      merchandise {
+        ... on ProductVariant {
+          product {
+            id
+          }
+        }
+      }
+    }
+    attribute(key: "__goal") {
+      key
+      value
     }
   }
   discount {

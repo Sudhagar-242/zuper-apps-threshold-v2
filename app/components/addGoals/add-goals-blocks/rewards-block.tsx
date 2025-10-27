@@ -4,6 +4,11 @@ import { ArrowPlacer } from "../goal-add-block";
 import { GoalType } from "app/types/goals";
 import { CallbackEvent } from "@shopify/polaris-types";
 import ProductTable from "../products-table";
+import {
+  Labels as ConfigLabels,
+  Validation as ConfigValidation,
+} from "app/constants/configurationAddGoals";
+import { Product } from "node_modules/@shopify/app-bridge-react/build/types/cjs/index.cjs";
 
 interface RewardsBlockType {
   goal: GoalType;
@@ -24,81 +29,82 @@ const RewardBlocK = ({
   const [isErrors, setIsErrors] = useState<typeof errors>(errors);
 
   useEffect(() => {
-    const newError = { offers: "", gifts: "" };
-
-    if (
-      (goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT &&
-        goal.cartDiscount &&
-        (Number(goal.cartDiscount) < 1 || Number(goal.cartDiscount) > 100)) ||
-      goal.cartDiscount?.length <= 0
-    ) {
-      newError.offers = "Must be between 1 and 100";
+    const newError: { discount?: string; gifts?: string; products?: string } =
+      {};
+    // Validate order discount
+    if (goal.offer === AddRewardBlockChoices.ORDER_DISCOUNT) {
+      const discountVal = Number(goal.cartDiscount ?? NaN);
+      if (Number.isNaN(discountVal) || discountVal < 1 || discountVal > 100) {
+        newError.discount = ConfigValidation.discountRange;
+      }
     }
 
-    if (
-      goal.offer === AddRewardBlockChoices.FREE_GIFT &&
-      goal.freeGifts?.length === 0
-    ) {
-      newError.gifts = "Select at least one product.";
+    // Validate free gift selection
+    if (goal.offer === AddRewardBlockChoices.FREE_GIFT) {
+      if (!goal.freeGifts || goal.freeGifts.length === 0) {
+        newError.gifts = ConfigValidation.selectAtLeastOneProduct;
+      }
     }
 
     setIsErrors(newError);
   }, [goal, goal.cartDiscount, goal.offer, goal.freeGifts, isActive]);
 
+  useEffect(() => {
+    console.log("goal offer changes", goal.offer);
+  }, [goal.offer]);
+
   const handleProductSelect = async () => {
     if (!isActive) return;
     // Assuming `shopify.resourcePicker` is globally available or imported
+    const fgRaw = (goal as unknown as { freeGifts?: unknown }).freeGifts;
+    const selectionIds =
+      typeof fgRaw === "string" ? JSON.parse(fgRaw as string) : fgRaw;
+
     const selected = await window.shopify?.resourcePicker({
       type: "product",
       multiple: true,
-      selectionIds:
-        typeof goal.freeGifts === "string"
-          ? JSON.parse(goal?.freeGifts)
-          : goal.freeGifts,
+      selectionIds: selectionIds,
     });
     if (selected) {
-      onChange("freeGifts", selected);
+      onChange(
+        "freeGifts",
+        selected.map((product: Partial<Product>) => ({
+          id: product.id,
+          title: product.title,
+          variants: product?.variants,
+        })),
+      );
     }
   };
 
   const handleRemoveProducts = (productId: string) => {
-    const removedProucts = goal.freeGifts?.filter(
+    const removedProducts = goal.freeGifts?.filter(
       (product) => product.id !== productId,
     );
-    onChange("freeGifts", removedProucts);
-    if (goal.products?.length === 0) {
+    onChange("freeGifts", removedProducts);
+    if (!removedProducts || removedProducts.length === 0) {
       setIsErrors((prev) => ({
         ...prev,
         products: "Select at least 1 product",
       }));
     }
   };
-  const handleRemoveVariantsProducts = (variantId: string) => {
-    const removedProuctVariants = goal.freeGifts?.map((product) => {
-      product.variants.filter((variant) => variant.id !== variantId);
-    });
-    onChange("freeGifts", removedProuctVariants);
-    if (goal.products?.length === 0) {
-      setIsErrors((prev) => ({
-        ...prev,
-        products: "Select at least 1 product",
-      }));
-    }
-  };
+
+  // Variant removal handled at product/variant UI level. Removed unused helper.
 
   const handleDiscountPercentChange = (e: CallbackEvent<"s-number-field">) => {
     if (!e || !e.currentTarget) return;
 
     const value = Number(e?.currentTarget.value);
 
-    if (value <= 0 && value <= 100) {
+    if (Number.isNaN(value) || value < 1 || value > 100) {
       onChange("cartDiscount", e?.currentTarget.value);
       setIsErrors((prev) => ({
         ...prev,
-        quantity: "Discount must be 0 to 100",
+        discount: "Discount must be between 1 and 100",
       }));
     } else {
-      setIsErrors((prev) => ({ ...prev, quantity: "" }));
+      setIsErrors((prev) => ({ ...prev, discount: "" }));
       onChange("cartDiscount", e.currentTarget.value);
     }
   };
@@ -106,7 +112,7 @@ const RewardBlocK = ({
   return (
     <>
       <s-section padding="base">
-        <s-heading>Rewards</s-heading>
+        <s-heading>{ConfigLabels.rewardsHeading}</s-heading>
         <s-box
           border="base strong dashed"
           padding="base"
@@ -132,6 +138,7 @@ const RewardBlocK = ({
                   required
                   disabled={!isActive}
                   error={errors.gifts ? errors.gifts : isErrors.gifts}
+                  value={goal.offer}
                 >
                   <s-option
                     value={AddRewardBlockChoices.FREE_SHIPPING}
@@ -149,14 +156,14 @@ const RewardBlocK = ({
                   >
                     Order Discount
                   </s-option>
-                  <s-option
+                  {/* <s-option
                     value={AddRewardBlockChoices.FREE_GIFT}
                     defaultSelected={
                       goal.offer === AddRewardBlockChoices.FREE_GIFT
                     }
                   >
                     Free Gift
-                  </s-option>
+                  </s-option> */}
                 </s-select>
               </s-stack>
 
@@ -186,7 +193,7 @@ const RewardBlocK = ({
                       onClick={handleProductSelect}
                       disabled={!isActive}
                     >
-                      Select Gift(s)
+                      {ConfigLabels.selectGiftsButton}
                     </s-button>
                   </s-stack>
                 </>
@@ -196,13 +203,13 @@ const RewardBlocK = ({
                     <s-text>of</s-text>
                     <s-box>
                       <s-number-field
-                        label="Orger Discount"
+                        label={ConfigValidation.discountRangeDetail}
                         labelAccessibilityVisibility="exclusive"
                         name={`goals[cartDiscount]`}
                         min={1}
                         max={100}
                         step={1}
-                        defaultValue={"2"}
+                        defaultValue={"0"}
                         suffix="%"
                         value={goal.cartDiscount}
                         error={

@@ -66,7 +66,10 @@ const GoalConfiguration = ({
               <s-switch
                 checked={goal.isActive}
                 onChange={(e) => {
-                  handleInputChange("isActive", e.currentTarget.checked);
+                  handleInputChange(
+                    "isActive",
+                    e.currentTarget.checked.toString() as "true" | "false",
+                  );
                 }}
                 accessibilityLabel="isActive"
                 defaultChecked={goal.isActive}

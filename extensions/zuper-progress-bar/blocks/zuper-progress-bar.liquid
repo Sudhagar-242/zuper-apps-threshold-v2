@@ -1,0 +1,52 @@
+<script async hidden>
+  window.goal_discounts = {goals: {{ shop.metafields.zuper_threshold.goals.value | json }}};
+  window.cart_currency = '{{ shop.currency }}';
+  window.cart_toatal = {{ cart.total_price | divided_by: 100 }};
+  window.zuper_section_id = {{ section.id | json }};
+</script>
+
+<style>
+  /* Progress container styles */
+  #goal-multi-progress {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f4f4f4;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+  }
+
+  #goal-multi-progress p {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  /* Progress bar container */
+  .progress-bar {
+    width: 0; /* Initially 0% */
+    height: 20px;
+    background-color: #4caf50;
+    border-radius: 5px;
+    transition: all 0.5s ease-in-out; /* Smooth animation of the width change */
+    box-sizing: border-box;
+  }
+
+  #progress-text {
+    font-size: 18px;
+    color: #333;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Zuper Progress Bar",
+  "target": "body",
+  "javascript": "zuper-progress-bar.js",
+  "settings": []
+}
+{% endschema %}

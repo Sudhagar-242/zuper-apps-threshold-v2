@@ -3,11 +3,23 @@
     "shopify-dev-mcp": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@shopify/dev-mcp@latest"],
+      "args": [
+        "-y",
+        "@shopify/dev-mcp@latest"
+      ],
       "env": {
         "POLARIS_UNIFIED": "true",
         "LIQUID": "true"
-      }
+      },
+      "alwaysAllow": [
+        "introspect_graphql_schema",
+        "learn_shopify_api",
+        "validate_theme",
+        "search_docs_chunks",
+        "fetch_full_docs",
+        "validate_component_codeblocks",
+        "validate_graphql_codeblocks"
+      ]
     }
   }
 }
